@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdrawal - LATEX FOAM</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 30px;
+        }
+
+        .top-navbar {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #020708;
+            border-bottom: 1px solid #0c2024;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: #00bcd4;
+            font-size: 20px;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .balance-banner {
+            background: linear-gradient(135deg, #072a2e 0%, #031416 100%);
+            border: 1px solid #103338;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.1);
+            text-align: center;
+        }
+
+        .balance-label {
+            font-size: 13px;
+            color: #9cb1b4;
+            margin-bottom: 5px;
+        }
+
+        .balance-amount {
+            font-size: 26px;
+            font-weight: bold;
+            color: #00bcd4;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #9cb1b4;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            background-color: #050f11;
+            border: 1px solid #102a30;
+            border-radius: 10px;
+            padding: 14px;
+            color: #ffffff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #00bcd4;
+        }
+
+        .form-group select option {
+            background-color: #050f11;
+            color: #ffffff;
+        }
+
+        .fee-calc-box {
+            font-size: 13px;
+            color: #8da4a7;
+            margin-top: 6px;
+            line-height: 1.6;
+        }
+
+        .fee-calc-box span {
+            color: #00bcd4;
+            font-weight: 600;
+        }
+
+        .instruction-card {
+            background-color: #050b0c;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 25px;
+            margin-bottom: 25px;
+            border: 1px solid #0d2226;
+        }
+
+        .instruction-card h4 {
+            font-size: 14px;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .instruction-card p {
+            font-size: 13px;
+            color: #657e81;
+            line-height: 1.5;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: #00bcd4;
+            color: #000000;
+            border: none;
+            border-radius: 25px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.2);
+        }
+
+        .btn-submit:hover {
+            background-color: #0097a7;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .flash-error { background-color: #721c24; color: #f8d7da; }
+        .flash-success { background-color: #155724; color: #d4edda; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="top-navbar">
+        <a href="{{ url_for('dashboard') }}" class="back-btn">‹</a>
+        <div class="page-title">Withdrawal</div>
+    </div>
+
+    <div class="container">
+        <div class="balance-banner">
+            <div class="balance-label">Withdrawable Balance</div>
+            <div class="balance-amount">{{ "%.2f"|format(user_balance) }} GHS</div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-messages flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('withdraw') }}" method="POST">
+            <div class="form-group">
+                <label for="amount">Withdrawal Amount (GHS)</label>
+                <input type="number" id="amount" name="amount" placeholder="Minimum 50 GHS" min="50" required oninput="updateFees(this.value)">
+                <div class="fee-calc-box">
+                    Processing Fee (19%): <span id="fee_display">0.00 GHS</span><br>
+                    Actual Receive Amount: <span id="receive_display">0.00 GHS</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="network">Select Wallet Network</label>
+                <select id="network" name="network" required>
+                    <option value="" disabled selected>Choose network</option>
+                    <option value="MTN">MTN Mobile Money</option>
+                    <option value="Telecel">Telecel Cash</option>
+                    <option value="AT">AT Money</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="wallet_number">Receiver Wallet Number</label>
+                <input type="text" id="wallet_number" name="wallet_number" placeholder="Enter mobile wallet phone number" required>
+            </div>
+
+            <div class="form-group">
+                <label for="withdraw_password">Withdrawal Password</label>
+                <input type="password" id="withdraw_password" name="withdraw_password" placeholder="Enter secure withdrawal password" required>
+            </div>
+
+            <div class="instruction-card">
+                <h4>Withdrawal Specifications</h4>
+                <p>• Minimum payout limit amount: GHS 50<br>
+                   • Standard processing tax rate fee: 19%<br>
+                   • Operational cashout schedule: 9:00 AM ~ 4:00 PM</p>
+            </div>
+
+            <button type="submit" class="btn-submit">Confirm Withdrawal</button>
+        </form>
+    </div>
+
+    <script>
+        function updateFees(val) {
+            let amount = parseFloat(val) || 0;
+            let fee = amount * 0.19;
+            let receive = amount - fee;
+            if(receive < 0) receive = 0;
+            
+            document.getElementById('fee_display').innerText = fee.toFixed(2) + " GHS";
+            document.getElementById('receive_display').innerText = receive.toFixed(2) + " GHS";
+        }
+    </script>
+</body>
+</html>

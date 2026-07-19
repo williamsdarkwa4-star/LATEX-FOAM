@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction History - LATEX FOAM</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px;
+        }
+
+        /* Top Fixed Navbar */
+        .top-navbar {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #020708;
+            border-bottom: 1px solid #0c2024;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: #00bcd4;
+            font-size: 20px;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 20px 15px;
+        }
+
+        .section-label {
+            font-size: 14px;
+            color: #657e81;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        /* Empty State Display Component */
+        .empty-history-box {
+            background-color: #050f11;
+            border: 1px dashed #14353a;
+            border-radius: 12px;
+            padding: 50px 20px;
+            text-align: center;
+            color: #657e81;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Financial Ledger Transaction Block Card Component */
+        .tx-history-card {
+            background-color: #050f11;
+            border: 1px solid #102a30;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .tx-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #00bcd4;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #0d2224;
+            padding-bottom: 8px;
+        }
+
+        .tx-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 0;
+            font-size: 13px;
+            color: #9cb1b4;
+        }
+
+        .tx-details-grid div span {
+            display: block;
+            color: #ffffff;
+            font-weight: 600;
+            margin-top: 2px;
+            font-size: 14px;
+        }
+
+        /* Status Badge Component Visual Themes Matrix */
+        .badge {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-pending { 
+            background-color: rgba(229, 193, 88, 0.15); 
+            color: #e5c158; 
+            border: 1px solid rgba(229, 193, 88, 0.3);
+        }
+        
+        .badge-accepted { 
+            background-color: rgba(40, 167, 69, 0.15); 
+            color: #28a745; 
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+        
+        .badge-rejected { 
+            background-color: rgba(220, 53, 69, 0.15); 
+            color: #dc3545; 
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+        
+        .badge-processing { 
+            background-color: rgba(0, 188, 212, 0.15); 
+            color: #00bcd4; 
+            border: 1px solid rgba(0, 188, 212, 0.3);
+        }
+        
+        .badge-success { 
+            background-color: #28a745; 
+            color: #000000; 
+        }
+
+        /* Persistent Navigation Dock Component Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: #030a0b;
+            border-top: 1px solid #0c2024;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #657e81;
+        }
+
+        .nav-link.active { color: #00bcd4; }
+        .nav-icon { font-size: 20px; }
+        .nav-text { font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation Section Bar Banner -->
+    <div class="top-navbar">
+        <a href="{{ url_for('dashboard') }}" class="back-btn">‹</a>
+        <div class="page-title">Transaction History</div>
+    </div>
+
+    <div class="container">
+        <div class="section-label">Statement Activity Log</div>
+
+        <!-- Render Fallback Layout If History Data List Matrix Array Retreivals are Blank -->
+        {% if not history_list %}
+            <div class="empty-history-box">
+                No financial movement transactions found on account ledger.<br>
+                Your complete deposit and withdrawal history logs will populate here.
+            </div>
+        {% else %}
+            <!-- Process and Render Historical Transaction Records Dynamically -->
+            {% for tx in history_list %}
+                <div class="tx-history-card">
+                    <div class="tx-header-row">
+                        <span>{{ tx.type }} Log</span>
+                        
+                        <!-- Assign class styling conditions to dynamic data fields -->
+                        <span class="badge 
+                            {% if tx.status == 'Pending' %}badge-pending
+                            {% elif tx.status == 'Accepted' %}badge-accepted
+                            {% elif tx.status == 'Rejected' %}badge-rejected
+                            {% elif tx.status == 'Bank Processing' %}badge-processing
+                            {% elif tx.status == 'Successful' %}badge-success{% endif %}"
+                            {% if tx.status == 'Bank Processing' %} data-timestamp="{{ tx.approved_date }}" {% endif %}>
+                            {{ tx.status }}
+                        </span>
+                    </div>
+                    
+                    <div class="tx-details-grid">
+                        <div>Amount Transacted: <span>GHS {{ "%.2f"|format(tx.amount) }}</span></div>
+                        <div>Execution Timestamp: <span style="color:#8fa4a7; font-size:12px;">{{ tx.date }}</span></div>
+                        
+                        {% if tx.type == 'Withdrawal' %}
+                            <div style="grid-column: span 2; border-top: 1px dashed #14353a; padding-top: 8px; margin-top: 4px;">
+                                Target Destination: <span>{{ tx.wallet }} ({{ tx.network }})</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Application Nav dock layout interface tracker -->
+    <nav class="bottom-nav">
+        <a href="{{ url_for('dashboard') }}" class="nav-link"><div class="nav-icon">🏠</div><div class="nav-text">Home</div></a>
+        <a href="{{ url_for('history') }}" class="nav-link active"><div class="nav-icon">🔄</div><div class="nav-text">Transaction</div></a>
+        <a href="{{ url_for('plan') }}" class="nav-link"><div class="nav-icon">🗄️</div><div class="nav-text">Cloud mining</div></a>
+        <a href="{{ url_for('logout') }}" class="nav-link"><div class="nav-icon">👤</div><div class="nav-text">Mine</div></a>
+    </nav>
+
+    <script>
+        // Live JavaScript execution algorithm counting down the 30-minute block window
+        function initializeHistoryTimers() {
+            const activeProcessingBadges = document.querySelectorAll('.badge.badge-processing');
+            
+            activeProcessingBadges.forEach(badge => {
+                const approvalStampString = badge.getAttribute('data-timestamp');
+                if (!approvalStampString) return;
+                
+                // Parse database date format correctly for cross-runtime uniformity
+                const approvedTime = new Date(approvalStampString.replace(/-/g, "/"));
+                const targetExecutionHorizon = new Date(approvedTime.getTime() + (30 * 60 * 1000));
+                
+                function liveCheck() {
+                    const currentTime = new Date();
+                    if (currentTime >= targetExecutionHorizon) {
+                        badge.innerText = "Successful";
+                        badge.className = "badge badge-success";
+                        clearInterval(intervalId);
+                    }
+                }
+                
+                // Initialize checks every second
+                const intervalId = setInterval(liveCheck, 1000);
+                liveCheck();
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", initializeHistoryTimers);
+    </script>
+</body>
+</html>

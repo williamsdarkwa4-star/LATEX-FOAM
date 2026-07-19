@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Profile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial,sans-serif;
+        }
+
+        body{
+            background:#000;
+            color:white;
+            min-height:100vh;
+            padding:20px;
+        }
+
+        .container{
+            width:100%;
+            max-width:500px;
+            margin:auto;
+        }
+
+        h2{
+            text-align:center;
+            font-size:32px;
+            margin:20px 0 10px;
+        }
+
+        .company{
+            text-align:center;
+            color:#00d9ff;
+            font-size:24px;
+            font-weight:bold;
+            letter-spacing:2px;
+            margin-bottom:35px;
+        }
+
+        .logo{
+            width:130px;
+            height:130px;
+            margin:auto;
+            border-radius:50%;
+            background:radial-gradient(circle,#0b4c50,#001010);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            box-shadow:0 0 30px #008b8b;
+            margin-bottom:40px;
+        }
+
+        .logo span{
+            font-size:60px;
+            color:#ffd54a;
+            font-weight:bold;
+        }
+
+        .card{
+            background:#031012;
+            border:1px solid #12383d;
+            border-radius:18px;
+            padding:20px;
+            margin-bottom:20px;
+        }
+
+        .card p{
+            color:#aaa;
+            margin-bottom:8px;
+            font-size:15px;
+        }
+
+        .card h3{
+            font-size:22px;
+        }
+
+        .balance{
+            color:#00d9ff;
+        }
+
+        .buttons{
+            display:flex;
+            gap:15px;
+            margin-top:20px;
+        }
+
+        .btn{
+            flex:1;
+            text-align:center;
+            padding:14px;
+            background:#12383d;
+            border:1px solid #08bddb;
+            border-radius:25px;
+            color:white;
+            text-decoration:none;
+            font-weight:bold;
+        }
+
+        .btn:hover{
+            background:#08bddb;
+            color:black;
+        }
+
+        .logout{
+            display:block;
+            text-align:center;
+            background:#ff4d4d;
+            color:white;
+            padding:18px;
+            border-radius:35px;
+            text-decoration:none;
+            font-weight:bold;
+            margin-top:25px;
+        }
+
+        .footer{
+            text-align:center;
+            color:#aaa;
+            margin-top:30px;
+            font-size:14px;
+        }
+
+        .footer span{
+            color:#00cbe8;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>My Profile</h2>
+
+    <div class="company">
+        LATEX FOAM
+    </div>
+
+
+    <div class="logo">
+        <span>L</span>
+    </div>
+
+
+    <div class="card">
+        <p>Account Number</p>
+        <h3>{{ account_number }}</h3>
+    </div>
+
+
+    <div class="card">
+        <p>Phone Number</p>
+        <h3>{{ user_phone }}</h3>
+    </div>
+
+
+    <div class="card">
+
+        <p>Balance</p>
+
+        <h3 class="">
+            {{ "%.2f"|format(user_balance) }} GHS
+        </h3>
+
+
+        <div class="buttons">
+
+        
+
+            <a href="{{ url_for('withdraw') }}" class="btn">
+                Withdraw
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <a href="{{ url_for('logout') }}" class="logout">
+        Logout
+    </a>
+
+
+    <div class="footer">
+        Agree with us
+       

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Mining Plans - LATEX FOAM</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px;
+        }
+
+        .top-navbar {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #020708;
+            border-bottom: 1px solid #0c2024;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: #00bcd4;
+            font-size: 20px;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        .flash-messages {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .flash-error { background-color: #721c24; color: #f8d7da; border: 1px solid #f5c6cb;}
+        .flash-success { background-color: #155724; color: #d4edda; border: 1px solid #c3e6cb;}
+
+        .plan-card {
+            background-color: #0b1112;
+            border: 1px solid #142a2d;
+            border-radius: 14px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .plan-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00bcd4;
+            border-bottom: 1px solid #0d2224;
+            padding-bottom: 6px;
+        }
+
+        .plan-body {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .plan-img-box {
+            width: 80px;
+            height: 80px;
+            background-color: #1a2e31;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            border: 1px solid #234246;
+        }
+
+        .plan-details {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 5px;
+            font-size: 13px;
+            color: #9cb1b4;
+        }
+
+        .plan-details div span {
+            display: block;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 2px;
+        }
+
+        .btn-buy {
+            background-color: #00bcd4;
+            color: #000000;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            grid-column: span 2;
+            text-align: center;
+            margin-top: 5px;
+            width: 100%;
+        }
+
+        .btn-buy:hover {
+            background-color: #0097a7;
+        }
+
+        .btn-running {
+            background-color: #1a3033;
+            color: #00bcd4;
+            border: 1px solid #00bcd4;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: #030a0b;
+            border-top: 1px solid #0c2024;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #657e81;
+        }
+
+        .nav-link.active { color: #00bcd4; }
+        .nav-icon { font-size: 20px; }
+        .nav-text { font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <div class="top-navbar">
+        <a href="{{ url_for('dashboard') }}" class="back-btn">‹</a>
+        <div class="page-title">Cloud mining</div>
+    </div>
+
+    <div class="container">
+
+        <!-- Error or Success Alert Area -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-messages flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Plan One Card -->
+        <div class="plan-card">
+            <div class="plan-title">Plan one</div>
+            <div class="plan-body">
+                <div class="plan-img-box">🛏️</div>
+                <div class="plan-details">
+                    <div>Price: <span>GHS 50.00</span></div>
+                    <div>Daily: <span>GHS 13.00</span></div>
+                    <div>Days: <span>50 Days</span></div>
+                    <div>Total: <span>GHS 650.00</span></div>
+                    <form action="{{ url_for('plan') }}" method="POST" style="grid-column: span 2;">
+                        <input type="hidden" name="plan_id" value="1">
+                        <button type="submit" class="btn-buy {% if '1' in running_plans %}btn-running{% endif %}">
+                            {% if '1' in running_plans %}Plan one is running{% else %}Buy Now{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plan Two Card -->
+        <div class="plan-card">
+            <div class="plan-title">Plan two</div>
+            <div class="plan-body">
+                <div class="plan-img-box">🛏️</div>
+                <div class="plan-details">
+                    <div>Price: <span>GHS 150.00</span></div>
+                    <div>Daily: <span>GHS 30.00</span></div>
+                    <div>Days: <span>50 Days</span></div>
+                    <div>Total: <span>GHS 1500.00</span></div>
+                    <form action="{{ url_for('plan') }}" method="POST" style="grid-column: span 2;">
+                        <input type="hidden" name="plan_id" value="2">
+                        <button type="submit" class="btn-buy {% if '2' in running_plans %}btn-running{% endif %}">
+                            {% if '2' in running_plans %}Plan two is running{% else %}Buy Now{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plan Three Card -->
+        <div class="plan-card">
+            <div class="plan-title">Plan three</div>
+            <div class="plan-body">
+                <div class="plan-img-box">🛏️</div>
+                <div class="plan-details">
+                    <div>Price: <span>GHS 300.00</span></div>
+                    <div>Daily: <span>GHS 50.00</span></div>
+                    <div>Days: <span>50 Days</span></div>
+                    <div>Total: <span>GHS 2500.00</span></div>
+                    <form action="{{ url_for('plan') }}" method="POST" style="grid-column: span 2;">
+                        <input type="hidden" name="plan_id" value="3">
+                        <button type="submit" class="btn-buy {% if '3' in running_plans %}btn-running{% endif %}">
+                            {% if '3' in running_plans %}Plan three is running{% else %}Buy Now{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plan Four Card -->
+        <div class="plan-card">
+            <div class="plan-title">Plan four</div>
+            <div class="plan-body">
+                <div class="plan-img-box">🛏️</div>
+                <div class="plan-details">
+                    <div>Price: <span>GHS 600.00</span></div>
+                    <div>Daily: <span>GHS 155.00</span></div>
+                    <div>Days: <span>50 Days</span></div>
+                    <div>Total: <span>GHS 7750.00</span></div>
+                    <form action="{{ url_for('plan') }}" method="POST" style="grid-column: span 2;">
+                        <input type="hidden" name="plan_id" value="4">
+                        <button type="submit" class="btn-buy {% if '4' in running_plans %}btn-running{% endif %}">
+                            {% if '4' in running_plans %}Plan four is running{% else %}Buy Now{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plan Five Card -->
+        <div class="plan-card">
+            <div class="plan-title">Plan five</div>
+            <div class="plan-body">
+                <div class="plan-img-box">🛏️</div>
+                <div class="plan-details">
+                    <div>Price: <span>GHS 1000.00</span></div>
+                    <div>Daily: <span>GHS 450.00</span></div>
+                    <div>Days: <span>50 Days</span></div>
+                    <div>Total: <span>GHS 22500.00</span></div>
+                    <form action="{{ url_for('plan') }}" method="POST" style="grid-column: span 2;">
+                        <input type="hidden" name="plan_id" value="5">
+                        <button type="submit" class="btn-buy {% if '5' in running_plans %}btn-running{% endif %}">
+                            {% if '5' in running_plans %}Plan five is running{% else %}Buy Now{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
