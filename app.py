@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
 import os
@@ -138,12 +137,9 @@ def register():
     return render_template('register.html')
 
 
+@app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
-    # ... rest of your existing login code stays exactly the same
-
     if request.method == 'POST':
         phone = request.form.get('phone')
         password = request.form.get('password')
