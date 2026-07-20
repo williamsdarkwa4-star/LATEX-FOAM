@@ -138,12 +138,6 @@ def register():
     return render_template('register.html')
 
 
-@app.route('/')
-def home():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
-    return redirect(url_for('login'))
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
