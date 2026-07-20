@@ -138,9 +138,18 @@ def register():
     return render_template('register.html')
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def home():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    # ... rest of your existing login code stays exactly the same
+
     if request.method == 'POST':
         phone = request.form.get('phone')
         password = request.form.get('password')
