@@ -12,7 +12,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 PLANS_DATA = {
-    '1': {'name': 'Plan one', 'price': 50.0, 'daily': 13.0, 'days': 50},
+    '1': {'name': 'Plan one', 'price': 50.0, 'daily': 6.0, 'days': 50},
     '2': {'name': 'Plan two', 'price': 150.0, 'daily': 30.0, 'days': 50},
     '3': {'name': 'Plan three', 'price': 300.0, 'daily': 50.0, 'days': 50},
     '4': {'name': 'Plan four', 'price': 600.0, 'daily': 155.0, 'days': 50},
