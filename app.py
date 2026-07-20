@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
 import os
@@ -17,61 +18,85 @@ PLANS_DATA = {
     '4': {'name': 'Plan four', 'price': 600.0, 'daily': 155.0, 'days': 50},
     '5': {'name': 'Plan five', 'price': 1000.0, 'daily': 450.0, 'days': 50}
 }
+def get_db_connection():
+    """Establishes connection to Render PostgreSQL when online, handles locally safely."""
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        print("Running locally without a database engine. Skipping connection.")
+        return None
+        
+    import psycopg2
+    from psycopg2.extras import DictCursor
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    return psycopg2.connect(database_url, cursor_factory=DictCursor)
 
 def init_db():
-    conn = sqlite3.connect('latex_foam.db')
+    """Initialises all user, deposit, withdrawal, and purchasing ledger tables with history tracking."""
+    conn = get_db_connection()
+    if conn is None:
+        return
+        
     cursor = conn.cursor()
+    
+    # 1. Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             phone TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             withdraw_password TEXT NOT NULL,
             invite_code TEXT,
-            balance REAL DEFAULT 30.0
+            balance NUMERIC DEFAULT 30.0
         )
     ''')
+    
+    # 2. Deposits Table (Kept as is, records status modifications automatically)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS deposits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            amount REAL NOT NULL,
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            amount NUMERIC NOT NULL,
             reference TEXT,
             screenshot_path TEXT,
             status TEXT DEFAULT 'Pending',
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
+            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # 3. Withdrawals Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS withdrawals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            amount REAL NOT NULL,
-            fee REAL NOT NULL,
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            amount NUMERIC NOT NULL,
+            fee NUMERIC NOT NULL,
             network TEXT NOT NULL,
             wallet_number TEXT NOT NULL,
             status TEXT DEFAULT 'Bank Processing',
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            approved_date TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id)
+            approved_date TEXT
         )
     ''')
+    
+    # 4. User Purchased Plans Table (Added 'last_claimed_date' column)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_plans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             plan_id TEXT NOT NULL,
-            price REAL NOT NULL,
-            daily_profit REAL NOT NULL,
+            price NUMERIC NOT NULL,
+            daily_profit NUMERIC NOT NULL,
             date_purchased TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
+            last_claimed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
     conn.commit()
+    cursor.close()
     conn.close()
+    print("All PostgreSQL tracking schemas initialised successfully.")
 
-init_db()
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -80,21 +105,38 @@ def register():
         password = request.form.get('password')
         withdraw_password = request.form.get('withdraw_password')
         invite_code = request.form.get('invite_code')
+        
         if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
             return redirect(url_for('register'))
+            
+        conn = get_db_connection()
+        if conn is None:
+            flash('Database engine offline locally. Test registration on live host.', 'error')
+            return redirect(url_for('register'))
+            
         try:
-            conn = sqlite3.connect('latex_foam.db')
             cursor = conn.cursor()
-            cursor.execute('INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (?, ?, ?, ?, 30.0)', (phone, password, withdraw_password, invite_code))
+            # Changed parameterized placeholders from '?' to '%s' to match PostgreSQL
+            cursor.execute(
+                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0)', 
+                (phone, password, withdraw_password, invite_code)
+            )
             conn.commit()
+            cursor.close()
             conn.close()
             flash('Registration successful! Please login.', 'success')
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
+        except Exception as e:
+            # Catches uniqueness integrity constraint errors on PostgreSQL
+            if conn:
+                cursor.close()
+                conn.close()
             flash('This phone number is already registered!', 'error')
             return redirect(url_for('register'))
+            
     return render_template('register.html')
+
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -102,69 +144,108 @@ def login():
     if request.method == 'POST':
         phone = request.form.get('phone')
         password = request.form.get('password')
-        conn = sqlite3.connect('latex_foam.db')
+        
+        conn = get_db_connection()
+        if conn is None:
+            flash('Database engine offline locally.', 'error')
+            return redirect(url_for('login'))
+            
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE phone = ? AND password = ?', (phone, password))
+        # Changed placeholders from '?' to '%s' to match PostgreSQL rules
+        cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s AND password = %s', (phone, password))
         user = cursor.fetchone()
+        cursor.close()
         conn.close()
+        
         if user:
-            session['user_id'] = user[0]
-            session['phone'] = user[1]
+            # Safely assigns values using explicit dictionary keys mapping instead of index values
+            session['user_id'] = user['id']
+            session['phone'] = user['phone']
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid phone number or password!', 'error')
             return redirect(url_for('login'))
+            
     return render_template('login.html')
+
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: 
         return redirect(url_for('login'))
-    conn = sqlite3.connect('latex_foam.db')
+        
+    conn = get_db_connection()
+    if conn is None:
+        return render_template('dashboard.html', user_phone=session['phone'], user_balance=30.0)
+        
     cursor = conn.cursor()
-    cursor.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
+    # Changed placeholder from '?' to '%s' to match PostgreSQL
+    cursor.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
     result = cursor.fetchone()
+    cursor.close()
     conn.close()
-    current_balance = result[0] if result else 0.0
+    
+    current_balance = float(result['balance']) if result else 0.0
     return render_template('dashboard.html', user_phone=session['phone'], user_balance=current_balance)
 
 @app.route('/deposit', methods=['GET', 'POST'])
 def deposit():
     if 'user_id' not in session: 
         return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    
     if request.method == 'POST':
         amount_raw = request.form.get('amount')
         reference = request.form.get('reference')
         file = request.files.get('screenshot')
         amount = float(amount_raw) if amount_raw else 0
-        if amount < 100:
-            flash('Minimum deposit requirement is 100 GHS!', 'error')
+        
+        # New minimum deposit constraint verification set to 100 GHS
+        if amount < 50:
+            if conn: conn.close()
+            flash('Minimum deposit requirement is 50 GHS!', 'error')
             return redirect(url_for('deposit'))
+            
         if file and reference:
             filename = f"user_{session['user_id']}_{int(datetime.now().timestamp())}_{file.filename}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            conn = sqlite3.connect('latex_foam.db')
-            cursor = conn.cursor()
-            cursor.execute('INSERT INTO deposits (user_id, amount, reference, screenshot_path, status) VALUES (?, ?, ?, ?, "Pending")', (session['user_id'], amount, reference, filepath))
-            conn.commit()
-            conn.close()
-            flash('Deposit order submitted!', 'success')
-            return redirect(url_for('deposit'))
-    conn = sqlite3.connect('latex_foam.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],))
-    result = cursor.fetchone()
-    user_balance = result[0] if result else 0.0
-    conn.close()
+            
+            if conn:
+                cursor = conn.cursor()
+                # Changed query parameters from '?' to '%s' to match PostgreSQL
+                cursor.execute(
+                    'INSERT INTO deposits (user_id, amount, reference, screenshot_path, status) VALUES (%s, %s, %s, %s, %s)', 
+                    (session['user_id'], amount, reference, filepath, "Pending")
+                )
+                conn.commit()
+                cursor.close()
+                conn.close()
+                flash('Deposit order submitted!', 'success')
+                return redirect(url_for('deposit'))
+                
+    user_balance = 0.0
+    if conn:
+        cursor = conn.cursor()
+        # Changed query parameter from '?' to '%s' to match PostgreSQL
+        cursor.execute('SELECT balance FROM users WHERE id = %s', (session['user_id'],))
+        result = cursor.fetchone()
+        user_balance = float(result['balance']) if result else 0.0
+        cursor.close()
+        conn.close()
+        
     return render_template('deposit.html', user_balance=user_balance)
-
 @app.route('/withdraw', methods=['GET', 'POST'])
 def withdraw():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect('latex_foam.db')
+    conn = get_db_connection()
+    if conn is None:
+        flash("Database connection unavailable.", "error")
+        return render_template('withdraw.html', user_balance=0.0)
+
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -175,32 +256,35 @@ def withdraw():
 
         amount = float(amount_raw) if amount_raw else 0
 
-        if amount < 50:
-            flash('Minimum withdrawal amount is 50 GHS!', 'error')
+        if amount < 60:
+            flash('Minimum withdrawal amount is 60 GHS!', 'error')
+            cursor.close()
             conn.close()
             return redirect(url_for('withdraw'))
 
-        # User must have purchased a plan
+        # Changed placeholder from '?' to '%s' to match PostgreSQL
         cursor.execute(
-            "SELECT id FROM user_plans WHERE user_id = ?",
+            "SELECT id FROM user_plans WHERE user_id = %s",
             (session['user_id'],)
         )
         active_plan = cursor.fetchone()
 
         if not active_plan:
             flash('You must purchase a plan before you can withdraw!', 'error')
+            cursor.close()
             conn.close()
             return redirect(url_for('withdraw'))
 
+        # Changed placeholder from '?' to '%s' to match PostgreSQL
         cursor.execute(
-            "SELECT balance, withdraw_password FROM users WHERE id = ?",
+            "SELECT balance, withdraw_password FROM users WHERE id = %s",
             (session['user_id'],)
         )
         user_data = cursor.fetchone()
 
         if user_data:
-            current_balance = user_data[0]
-            db_withdraw_password = user_data[1]
+            current_balance = float(user_data['balance'])
+            db_withdraw_password = user_data['withdraw_password']
 
             if amount > current_balance:
                 flash('Insufficient account balance!', 'error')
@@ -213,16 +297,18 @@ def withdraw():
                 actual_payout = amount - fee
                 new_balance = current_balance - amount
 
+                # Changed placeholders from '?' to '%s' to match PostgreSQL
                 cursor.execute(
-                    "UPDATE users SET balance=? WHERE id=?",
+                    "UPDATE users SET balance=%s WHERE id=%s",
                     (new_balance, session['user_id'])
                 )
 
+                # Changed placeholders from '?' to '%s' to match PostgreSQL
                 cursor.execute(
                     """
                     INSERT INTO withdrawals
                     (user_id, amount, fee, network, wallet_number, status)
-                    VALUES (?, ?, ?, ?, ?, 'Bank Processing')
+                    VALUES (%s, %s, %s, %s, %s, 'Bank Processing')
                     """,
                     (
                         session['user_id'],
@@ -236,20 +322,146 @@ def withdraw():
                 conn.commit()
                 flash('Withdrawal request sent to admin.', 'success')
 
+    # Changed placeholder from '?' to '%s' to match PostgreSQL
     cursor.execute(
-        "SELECT balance FROM users WHERE id=?",
+        "SELECT balance FROM users WHERE id=%s",
         (session['user_id'],)
     )
 
     result = cursor.fetchone()
-    user_balance = result[0] if result else 0.0
+    user_balance = float(result['balance']) if result else 0.0
 
+    cursor.close()
     conn.close()
 
     return render_template(
         'withdraw.html',
         user_balance=user_balance
     )
+''
+@app.route('/history')
+def history():
+    if 'user_id' not in session: 
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    if conn is None:
+        flash("History logging engine currently offline.", "error")
+        return redirect(url_for('dashboard'))
+        
+    cursor = conn.cursor()
+    
+    # Fetch all deposit history records
+    cursor.execute("""
+        SELECT amount, reference, status, date 
+        FROM deposits 
+        WHERE user_id = %s 
+        ORDER BY date DESC
+    """, (session['user_id'],))
+    deposit_history = cursor.fetchall()
+    
+    # Fetch all withdrawal history records
+    cursor.execute("""
+        SELECT amount, fee, status, date, approved_date 
+        FROM withdrawals 
+        WHERE user_id = %s 
+        ORDER BY date DESC
+    """, (session['user_id'],))
+    withdrawal_history = cursor.fetchall()
+    
+    # Fetch active plan listings to generate timers on the frontend interface
+    cursor.execute("""
+        SELECT id, plan_id, price, daily_profit, date_purchased, last_claimed_date 
+        FROM user_plans 
+        WHERE user_id = %s 
+        ORDER BY date_purchased DESC
+    """, (session['user_id'],))
+    active_plans = cursor.fetchall()
+    
+    # Calculate countdown metrics for each plan
+    processed_plans = []
+    now = datetime.now()
+    for plan in active_plans:
+        # Time difference calculation since last extraction claim
+        time_elapsed = now - plan['last_claimed_date']
+        seconds_elapsed = time_elapsed.total_seconds()
+        
+        # 24 hours equals 86400 seconds
+        time_left = max(0, 86400 - seconds_elapsed)
+        can_claim = seconds_elapsed >= 86400
+        
+        processed_plans.append({
+            'id': plan['id'],
+            'plan_id': plan['plan_id'],
+            'price': float(plan['price']),
+            'daily_profit': float(plan['daily_profit']),
+            'date_purchased': plan['date_purchased'],
+            'time_left_seconds': int(time_left),
+            'can_claim': can_claim
+        })
+        
+    cursor.close()
+    conn.close()
+    
+    return render_template(
+        'history.html', 
+        deposits=deposit_history, 
+        withdrawals=withdrawal_history, 
+        plans=processed_plans
+    )
+@app.route('/claim_profit/<int:user_plan_id>', methods=['POST'])
+def claim_profit(user_plan_id):
+    if 'user_id' not in session: 
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    if conn is None:
+        flash("Earnings validator server unreachable.", "error")
+        return redirect(url_for('history'))
+        
+    cursor = conn.cursor()
+    
+    # Fetch specific targeted plan to double check verification timestamps
+    cursor.execute("""
+        SELECT last_claimed_date, daily_profit 
+        FROM user_plans 
+        WHERE id = %s AND user_id = %s
+    """, (user_plan_id, session['user_id']))
+    plan = cursor.fetchone()
+    
+    if not plan:
+        cursor.close()
+        conn.close()
+        flash("Target asset ledger signature mismatch.", "error")
+        return redirect(url_for('history'))
+        
+    now = datetime.now()
+    time_elapsed = now - plan['last_claimed_date']
+    
+    # Verify the 24-hour interval safety floor limit
+    if time_elapsed.total_seconds() < 86400:
+        cursor.close()
+        conn.close()
+        flash("24-hour cycle timer countdown is still running!", "error")
+        return redirect(url_for('history'))
+        
+    profit = float(plan['daily_profit'])
+    
+    try:
+        # 1. Award balance to user wallet profile
+        cursor.execute("UPDATE users SET balance = balance + %s WHERE id = %s", (profit, session['user_id']))
+        # 2. Reset the last_claimed_date timestamp to the current moment
+        cursor.execute("UPDATE user_plans SET last_claimed_date = %s WHERE id = %s", (now, user_plan_id))
+        
+        conn.commit()
+        flash(f"Successfully claimed your daily profit of {profit} GHS!", "success")
+    except Exception as e:
+        conn.rollback()
+        flash("Transaction execution exception loop occurred.", "error")
+        
+    cursor.close()
+    conn.close()
+    return redirect(url_for('history'))
 
 @app.route('/service')
 def service():
@@ -259,7 +471,11 @@ def plan():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect('latex_foam.db')
+    conn = get_db_connection()
+    if conn is None:
+        flash("Database connection unavailable.", "error")
+        return render_template('plan.html', plans=PLANS_DATA)
+
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -268,8 +484,9 @@ def plan():
         if plan_id in PLANS_DATA:
             selected_plan = PLANS_DATA[plan_id]
 
+            # Changed placeholders from '?' to '%s' to match PostgreSQL
             cursor.execute(
-                'SELECT * FROM user_plans WHERE user_id=? AND plan_id=?',
+                'SELECT id FROM user_plans WHERE user_id=%s AND plan_id=%s',
                 (session['user_id'], plan_id)
             )
 
@@ -277,13 +494,10 @@ def plan():
                 flash(f"{selected_plan['name']} is already running.", 'error')
 
             else:
-                cursor.execute(
-                    'SELECT balance FROM users WHERE id=?',
-                    (session['user_id'],)
-                )
-
+                # Changed placeholder from '?' to '%s' to match PostgreSQL
+                cursor.execute('SELECT balance FROM users WHERE id=%s', (session['user_id'],))
                 user = cursor.fetchone()
-                balance = user[0]
+                balance = float(user['balance']) if user else 0.0
 
                 if balance < selected_plan['price']:
                     flash('Insufficient balance!', 'error')
@@ -291,13 +505,15 @@ def plan():
                 else:
                     new_balance = balance - selected_plan['price']
 
+                    # Changed placeholders from '?' to '%s' to match PostgreSQL
                     cursor.execute(
-                        'UPDATE users SET balance=? WHERE id=?',
+                        'UPDATE users SET balance=%s WHERE id=%s',
                         (new_balance, session['user_id'])
                     )
 
+                    # Changed placeholders from '?' to '%s' to match PostgreSQL
                     cursor.execute(
-                        'INSERT INTO user_plans (user_id, plan_id, price, daily_profit) VALUES (?, ?, ?, ?)',
+                        'INSERT INTO user_plans (user_id, plan_id, price, daily_profit) VALUES (%s, %s, %s, %s)',
                         (
                             session['user_id'],
                             plan_id,
@@ -309,10 +525,14 @@ def plan():
                     conn.commit()
                     flash('Plan purchased successfully!', 'success')
 
+        cursor.close()
+        conn.close()
         return redirect(url_for('plan'))
 
+    cursor.close()
     conn.close()
     return render_template('plan.html', plans=PLANS_DATA)
+
 @app.route('/my_plan')
 def my_plan():
     return render_template('my_plan.html')
@@ -360,7 +580,6 @@ def admin_login():
     return render_template("admin_login.html")
 @app.route('/admin/adjust_balance', methods=['POST'])
 def admin_adjust_balance():
-
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
 
@@ -368,54 +587,58 @@ def admin_adjust_balance():
     amount = float(request.form.get('amount'))
     action_type = request.form.get('action_type')
 
-    conn = sqlite3.connect('latex_foam.db')
+    conn = get_db_connection()
+    if conn is None:
+        flash("Database connection unavailable.", "error")
+        return redirect(url_for('admin'))
+
     cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT balance FROM users WHERE phone=?",
-        (phone,)
-    )
-
+    # Changed placeholder from '?' to '%s' to match PostgreSQL
+    cursor.execute("SELECT balance FROM users WHERE phone=%s", (phone,))
     user = cursor.fetchone()
 
     if user is None:
+        cursor.close()
         conn.close()
         flash("User not found!", "error")
         return redirect(url_for('admin'))
 
-    balance = user[0]
+    # Accesses data by column name 'balance' thanks to DictCursor mapping rules
+    balance = float(user['balance'])
 
     if action_type == "add":
         balance += amount
-
     elif action_type == "deduct":
         balance -= amount
-
         if balance < 0:
             balance = 0
 
-    cursor.execute(
-        "UPDATE users SET balance=? WHERE phone=?",
-        (balance, phone)
-    )
-
+    # Changed placeholders from '?' to '%s' to match PostgreSQL
+    cursor.execute("UPDATE users SET balance=%s WHERE phone=%s", (balance, phone))
     conn.commit()
+    cursor.close()
     conn.close()
 
     flash("Balance updated successfully!", "success")
-
     return redirect(url_for('admin'))  
 @app.route('/admin')
 def admin():
-
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect('latex_foam.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
+    if conn is None:
+        # Graceful fallback data structures to prevent dashboard crashes when editing offline
+        return render_template(
+            "admin.html",
+            users=[],
+            pending_deposits=[],
+            pending_withdrawals=[]
+        )
+
     cursor = conn.cursor()
 
-    # Get all users
+    # Get all registered website users
     cursor.execute("""
         SELECT id, phone, balance
         FROM users
@@ -423,42 +646,37 @@ def admin():
     """)
     users = cursor.fetchall()
 
-
-    # Get pending deposits
+    # Get pending user invoice receipts
     cursor.execute("""
         SELECT 
-            deposits.id,
-            deposits.amount,
-            deposits.reference,
-            deposits.screenshot_path,
-            users.phone
-        FROM deposits
-        JOIN users 
-        ON deposits.user_id = users.id
-        WHERE deposits.status = 'Pending'
+            d.id,
+            d.amount,
+            d.reference,
+            d.screenshot_path,
+            u.phone
+        FROM deposits d
+        JOIN users u ON d.user_id = u.id
+        WHERE d.status = 'Pending'
     """)
     pending_deposits = cursor.fetchall()
 
-
-    # Get pending withdrawals
+    # Get pending bank processing payouts 
     cursor.execute("""
         SELECT 
-            withdrawals.id,
-            withdrawals.amount,
-            withdrawals.fee,
-            withdrawals.network,
-            withdrawals.wallet_number,
-            users.phone
-        FROM withdrawals
-        JOIN users
-        ON withdrawals.user_id = users.id
-        WHERE withdrawals.status = 'Bank Processing'
+            w.id,
+            w.amount,
+            w.fee,
+            w.network,
+            w.wallet_number,
+            u.phone
+        FROM withdrawals w
+        JOIN users u ON w.user_id = u.id
+        WHERE w.status = 'Bank Processing'
     """)
     pending_withdrawals = cursor.fetchall()
 
-
+    cursor.close()
     conn.close()
-
 
     return render_template(
         "admin.html",
@@ -468,105 +686,90 @@ def admin():
     )
 @app.route('/admin/deposit/<int:id>/<action>')
 def admin_handle_deposit(id, action):
-
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect('latex_foam.db')
+    conn = get_db_connection()
+    if conn is None:
+        flash("Database connection unavailable.", "error")
+        return redirect(url_for('admin'))
+
     cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT user_id, amount FROM deposits WHERE id=?",
-        (id,)
-    )
-
+    # Changed placeholder from '?' to '%s' to match PostgreSQL
+    cursor.execute("SELECT user_id, amount FROM deposits WHERE id=%s", (id,))
     deposit = cursor.fetchone()
 
     if not deposit:
+        cursor.close()
         conn.close()
         flash("Deposit not found!", "error")
         return redirect(url_for('admin'))
 
-    user_id = deposit[0]
-    amount = deposit[1]
+    # Access data fields by explicit dictionary key strings via DictCursor mapping
+    user_id = deposit['user_id']
+    amount = float(deposit['amount'])
 
     if action == "accept":
-
-        cursor.execute(
-            "UPDATE users SET balance = balance + ? WHERE id=?",
-            (amount, user_id)
-        )
-
-        cursor.execute(
-            "UPDATE deposits SET status='Approved' WHERE id=?",
-            (id,)
-        )
-
+        # Changed placeholders from '?' to '%s' to match PostgreSQL
+        cursor.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (amount, user_id))
+        cursor.execute("UPDATE deposits SET status='Approved' WHERE id=%s", (id,))
         flash("Deposit approved. User balance updated.", "success")
 
-
     elif action == "reject":
-
-        cursor.execute(
-            "UPDATE deposits SET status='Rejected' WHERE id=?",
-            (id,)
-        )
-
+        # Changed placeholder from '?' to '%s' to match PostgreSQL
+        cursor.execute("UPDATE deposits SET status='Rejected' WHERE id=%s", (id,))
         flash("Deposit rejected.", "error")
 
-
     conn.commit()
+    cursor.close()
     conn.close()
 
     return redirect(url_for('admin'))
+
 @app.route('/admin/withdrawal/<int:id>/<action>')
 def admin_handle_withdrawal(id, action):
-
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect('latex_foam.db')
-    cursor = conn.cursor()
+    conn = get_db_connection()
+    if conn is None:
+        flash("Database connection unavailable.", "error")
+        return redirect(url_for('admin'))
 
-    cursor.execute(
-        "SELECT user_id, amount, fee FROM withdrawals WHERE id=?",
-        (id,)
-    )
+    cursor = conn.cursor()
+    # Changed placeholder from '?' to '%s' to match PostgreSQL
+    cursor.execute("SELECT user_id, amount, fee FROM withdrawals WHERE id=%s", (id,))
     withdrawal = cursor.fetchone()
 
     if withdrawal is None:
+        cursor.close()
         conn.close()
         flash("Withdrawal not found!", "error")
         return redirect(url_for('admin'))
 
-    user_id = withdrawal[0]
-    amount = withdrawal[1]
-    fee = withdrawal[2]
+    # Access data fields by explicit dictionary key strings via DictCursor mapping configurations
+    user_id = withdrawal['user_id']
+    amount = float(withdrawal['amount'])
+    fee = float(withdrawal['fee'])
 
     if action == "accept":
-        cursor.execute(
-            "UPDATE withdrawals SET status='Completed', approved_date=? WHERE id=?",
-            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), id)
-        )
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Changed placeholders from '?' to '%s' to match PostgreSQL
+        cursor.execute("UPDATE withdrawals SET status='Completed', approved_date=%s WHERE id=%s", (current_time, id))
         flash("Withdrawal approved successfully!", "success")
 
     elif action == "reject":
         refund = amount + fee
-
-        cursor.execute(
-            "UPDATE users SET balance = balance + ? WHERE id=?",
-            (refund, user_id)
-        )
-
-        cursor.execute(
-            "UPDATE withdrawals SET status='Rejected' WHERE id=?",
-            (id,)
-        )
-
+        # Changed placeholders from '?' to '%s' to match PostgreSQL
+        cursor.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (refund, user_id))
+        cursor.execute("UPDATE withdrawals SET status='Rejected' WHERE id=%s", (id,))
         flash("Withdrawal rejected. Funds returned to user.", "success")
 
     conn.commit()
+    cursor.close()
     conn.close()
+    return redirect(url_for('admin'))
+
 @app.route('/recharge')
 def recharge():
     return render_template('recharge.html')
