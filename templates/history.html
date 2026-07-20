@@ -4,28 +4,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transaction & Plan History</title>
-    <!-- Simple CDN CSS for clean visual structure -->
-    <link rel="stylesheet" href="https://cloudflare.com">
     <style>
-        body { padding: 20px; background: #f4f5f6; }
-        .container { max-width: 800px; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .nav-btn { margin-bottom: 20px; }
-        .section-title { margin-top: 30px; border-bottom: 2px solid #9b4dca; padding-bottom: 5px; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 1.2rem; font-weight: bold; color: #fff; }
-        .status-pending { background: #f0ad4e; }
-        .status-approved, .status-completed { background: #5cb85c; }
-        .status-rejected { background: #d9534f; }
-        .status-processing { background: #5bc0de; }
-        .timer-box { font-weight: bold; color: #9b4dca; font-variant-numeric: tabular-nums; }
-        .flash-messages { list-style: none; padding: 0; }
-        .flash-success { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; }
-        .flash-error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; }
+        /* Base Deep Dark Backdrop Setup */
+        body { 
+            padding: 15px; 
+            background: #060606; 
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+        }
+        
+        /* Main Container Card Box */
+        .container { 
+            max-width: 500px; 
+            background: #121212; 
+            padding: 20px; 
+            border-radius: 16px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4); 
+            margin: 10px auto;
+            border: 1px solid #1f1f1f;
+        }
+
+        /* Clean Minimal Navigation Link */
+        .nav-btn { 
+            display: inline-block;
+            margin-bottom: 25px; 
+            color: #a0a0a0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+        }
+        .nav-btn:hover {
+            color: #00e5ff;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #ffffff;
+        }
+
+        /* Teal Section Headings Matching the Screenshot */
+        .section-title { 
+            color: #00e5ff; 
+            font-size: 1.15rem; 
+            font-weight: 600; 
+            margin-top: 30px; 
+            margin-bottom: 14px;
+        }
+
+        /* Row Items Container Layout */
+        .data-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* Inner Content Component Card */
+        .data-row {
+            background-color: #1a1a1a;
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #242424;
+        }
+
+        /* Clean Structured Text Labels */
+        .left-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .right-info {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .primary-text {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .secondary-text {
+            color: #888888;
+            font-size: 0.8rem;
+        }
+
+        /* Status Colors Adjusted for Dark Design Mode */
+        .badge { 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            color: #ffffff; 
+        }
+        .status-pending { color: #f0ad4e; }
+        .status-approved, .status-completed { color: #5cb85c; }
+        .status-rejected { color: #d9534f; }
+        .status-processing { color: #00e5ff; }
+
+        .timer-box { font-weight: bold; color: #ff9800; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+        
+        /* Flash Notification Messaging Styles */
+        .flash-messages { list-style: none; padding: 0; margin-bottom: 20px; }
+        .flash-success { background: rgba(92, 184, 92, 0.15); color: #5cb85c; padding: 12px; border-radius: 8px; border: 1px solid rgba(92, 184, 92, 0.3); font-size: 0.9rem; }
+        .flash-error { background: rgba(217, 83, 79, 0.15); color: #d9534f; padding: 12px; border-radius: 8px; border: 1px solid rgba(217, 83, 79, 0.3); font-size: 0.9rem; }
+
+        .claim-btn {
+            background: none;
+            border: none;
+            color: #5cb85c;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="{{ url_for('dashboard') }}" class="button button-outline nav-btn">← Back to Dashboard</a>
+    <a href="{{ url_for('dashboard') }}" class="nav-btn">← Back to Dashboard</a>
     
     <h2>Account Logs & Histories</h2>
 
@@ -42,59 +148,47 @@
 
     <!-- 1. ACTIVE INVESTMENT PLANS SECTION -->
     <h4 class="section-title">My Active Packages</h4>
-    {% if plans %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Plan</th>
-                    <th>Price</th>
-                    <th>Daily Profit</th>
-                    <th>Action / Unlock Timer</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for plan in plans %}
-                <tr>
-                    <td><strong>Plan {{ plan.plan_id }}</strong></td>
-                    <td>{{ plan.price }} GHS</td>
-                    <td>+{{ plan.daily_profit }} GHS</td>
-                    <td>
+    <div class="data-list">
+        {% if plans %}
+            {% for plan in plans %}
+            <div class="data-row">
+                <div class="left-info">
+                    <span class="primary-text">Plan {{ plan.plan_id }}</span>
+                    <span class="secondary-text">Daily Profit: +{{ plan.daily_profit }} GHS</span>
+                </div>
+                <div class="right-info">
+                    <span class="primary-text">{{ plan.price }} GHS</span>
+                    <div style="margin-top: 2px;">
                         {% if plan.can_claim %}
                             <form action="{{ url_for('claim_profit', user_plan_id=plan.id) }}" method="POST" style="margin:0;">
-                                <button type="submit" class="button button-clear" style="color:#5cb85c; padding:0; margin:0;">Claim Profit</button>
+                                <button type="submit" class="claim-btn">Claim Profit</button>
                             </form>
                         {% else %}
                             <span class="timer-box" data-seconds="{{ plan.time_left_seconds }}">Calculating...</span>
                         {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>You have not purchased any active investment packages yet.</p>
-    {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="secondary-text">You have not purchased any active investment packages yet.</p>
+        {% endif %}
+    </div>
 
 
     <!-- 2. DEPOSIT HISTORY SECTION -->
     <h4 class="section-title">Deposit Records</h4>
-    {% if deposits %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Amount</th>
-                    <th>Reference</th>
-                    <th>Date Registered</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for deposit in deposits %}
-                <tr>
-                    <td><strong>{{ deposit.amount }} GHS</strong></td>
-                    <td><code>{{ deposit.reference }}</code></td>
-                    <td>{{ deposit.date.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>
+    <div class="data-list">
+        {% if deposits %}
+            {% for deposit in deposits %}
+            <div class="data-row">
+                <div class="left-info">
+                    <span class="primary-text">{{ deposit.amount }} GHS</span>
+                    <span class="secondary-text">Ref: {{ deposit.reference }}</span>
+                </div>
+                <div class="right-info">
+                    <span class="secondary-text">{{ deposit.date.strftime('%Y-%m-%d %H:%M') }}</span>
+                    <div>
                         {% if deposit.status == 'Pending' %}
                             <span class="badge status-pending">Pending</span>
                         {% elif deposit.status == 'Approved' %}
@@ -102,35 +196,29 @@
                         {% else %}
                             <span class="badge status-rejected">Rejected</span>
                         {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No deposit logs found.</p>
-    {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="secondary-text">No deposit logs found.</p>
+        {% endif %}
+    </div>
 
 
     <!-- 3. WITHDRAWAL HISTORY SECTION -->
     <h4 class="section-title">Withdrawal Records</h4>
-    {% if withdrawals %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Payout Amount</th>
-                    <th>System Fee</th>
-                    <th>Target Destination</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for w in withdrawals %}
-                <tr>
-                    <td><strong>{{ w.amount }} GHS</strong></td>
-                    <td>{{ w.fee }} GHS</td>
-                    <td>{{ w.network }} ({{ w.wallet_number }})</td>
-                    <td>
+    <div class="data-list">
+        {% if withdrawals %}
+            {% for w in withdrawals %}
+            <div class="data-row">
+                <div class="left-info">
+                    <span class="primary-text">{{ w.amount }} GHS</span>
+                    <span class="secondary-text">{{ w.network }} ({{ w.wallet_number }})</span>
+                </div>
+                <div class="right-info">
+                    <span class="secondary-text">Fee: {{ w.fee }} GHS</span>
+                    <div>
                         {% if w.status == 'Bank Processing' %}
                             <span class="badge status-processing">Processing</span>
                         {% elif w.status == 'Completed' %}
@@ -138,14 +226,14 @@
                         {% else %}
                             <span class="badge status-rejected">Rejected</span>
                         {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No withdrawal logs found.</p>
-    {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="secondary-text">No withdrawal logs found.</p>
+        {% endif %}
+    </div>
 </div>
 
 <!-- REAL-TIME JAVASCRIPT COUNTDOWN TIMERS ENGINE -->
@@ -158,7 +246,7 @@
             
             function updateTimer() {
                 if (timeLeft <= 0) {
-                    box.innerHTML = `<span style="color:#5cb85c; font-weight:bold;">Ready! Refresh page to claim</span>`;
+                    box.innerHTML = `<span style="color:#5cb85c; font-weight:bold;">Ready! Refresh</span>`;
                     clearInterval(intervalId);
                     return;
                 }
@@ -167,7 +255,6 @@
                 const minutes = Math.floor((timeLeft % 3600) / 60);
                 const seconds = timeLeft % 60;
                 
-                // Format units with leading zeros
                 const displayHours = hours.toString().padStart(2, '0');
                 const displayMinutes = minutes.toString().padStart(2, '0');
                 const displaySeconds = seconds.toString().padStart(2, '0');
@@ -176,7 +263,6 @@
                 timeLeft--;
             }
             
-            // Fire layout instantly and trigger tracking intervals
             updateTimer();
             const intervalId = setInterval(updateTimer, 1000);
         });
