@@ -787,5 +787,7 @@ def admin_logout():
     session.clear()
     return redirect(url_for('login'))
     return redirect(url_for('admin'))
+    init_db()
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
