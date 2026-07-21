@@ -924,6 +924,7 @@ def admin_handle_deposit(id, action):
 
     return redirect(url_for('admin'))
 
+
 @app.route('/admin/withdrawal/<int:id>/<action>')
 def admin_handle_withdrawal(id, action):
     if not session.get("admin"):
@@ -935,17 +936,6 @@ def admin_handle_withdrawal(id, action):
         return redirect(url_for('admin'))
         
     cursor = conn.cursor()
-    # Changed placeholder from '?' to '%s'
-    cursor.execute("SELECT user_id, amount, fee FROM withdrawals WHERE id=%s", (id,))
-    withdrawal = cursor.fetchone()
-    
-    if withdrawal is None:
-        cursor.close()
-        conn.close()
-        flash("Withdrawal not found!", "error")
-        return redirect(url_for('admin'))
-
-cursor = conn.cursor()
     # Changed placeholder from '?' to '%s' to match PostgreSQL
     cursor.execute("SELECT user_id, amount, fee FROM withdrawals WHERE id=%s", (id,))
     withdrawal = cursor.fetchone()
@@ -987,18 +977,16 @@ def recharge():
 def admin_withdraw():
     return render_template('admin_withdraw.html')
 
-
 @app.route('/details')
 def details():
     return render_template('details.html')
+
 @app.route('/admin/logout')
 def admin_logout():
     session.clear()
     return redirect(url_for('login'))
-    return redirect(url_for('admin'))
-    
 
 if __name__ == '__main__':
+    # Initialize the database table structure before running the application server
+    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
-    
-init_db()
