@@ -77,21 +77,21 @@ try:
 except Exception as e:
     conn.rollback()
     print("Referral columns update:", e)
+    # Referral Network Table
     cursor.execute('''
-CREATE TABLE IF NOT EXISTS referral_network (
-    id SERIAL PRIMARY KEY,
-    referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    level INTEGER NOT NULL,
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-''')
+        CREATE TABLE IF NOT EXISTS referral_network (
+            id SERIAL PRIMARY KEY,
+            referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            level INTEGER NOT NULL,
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
 
-conn.commit()
 
- # 2. Deposits Table (Kept as is, records status modifications automatically)
-     cursor.execute('''
-CREATE TABLE IF NOT EXISTS deposits (
+    # 2. Deposits Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS deposits (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             amount NUMERIC NOT NULL,
@@ -101,10 +101,11 @@ CREATE TABLE IF NOT EXISTS deposits (
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
+
     # 3. Withdrawals Table
     cursor.execute('''
-CREATE TABLE IF NOT EXISTS withdrawals (
+        CREATE TABLE IF NOT EXISTS withdrawals (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             amount NUMERIC NOT NULL,
