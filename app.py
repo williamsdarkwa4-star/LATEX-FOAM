@@ -176,23 +176,25 @@ def register():
             return redirect(url_for('register'))
             
         try:
+                try:
             cursor = conn.cursor()
             
-          cursor.execute(
-    '''
-    INSERT INTO users 
-    (phone, password, withdraw_password, referral_code, referred_by, balance)
-    VALUES (%s, %s, %s, %s, %s, 30.0)
-    RETURNING id
-    ''',
-    (
-        phone,
-        password,
-        withdraw_password,
-        my_referral_code,
-        used_referral
-    )
-)
+            cursor.execute(
+                '''
+                INSERT INTO users 
+                (phone, password, withdraw_password, referral_code, referred_by, balance)
+                VALUES (%s, %s, %s, %s, %s, 30.0)
+                RETURNING id
+                ''',
+                (
+                    phone,
+                    password,
+                    withdraw_password,
+                    my_referral_code,
+                    used_referral
+                )
+            )
+
             new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
             
             # 2. Level System Hook: Check if user registered via another member's invite link
