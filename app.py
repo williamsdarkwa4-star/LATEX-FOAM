@@ -99,9 +99,11 @@ def init_db():
 from werkzeug.security import generate_password_hash, check_password_hash
 
 @app.route('/register', methods=['GET', 'POST'])
-def register():
-    # Your registration code logic goes here...
-
+def process_registration():
+    if request.method == 'GET':
+        return render_template('register.html')
+        
+    # Get form data safely
     phone = request.form.get('phone', '').strip()
     login_pass = request.form.get('password', '').strip()
     withdraw_pass = request.form.get('withdrawal_password', '').strip()
@@ -113,7 +115,7 @@ def register():
     try:
         cursor = connection.cursor()
         
-        # FIX 1: Exact phone match check using parameterized input
+        # Check if phone number already exists
         cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
         existing_user = cursor.fetchone()
         
@@ -134,9 +136,14 @@ def register():
         # Log user into active session memory instantly
         cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
         new_user = cursor.fetchone()
-        session['user_id'] = new_user[0]
+        
+        # Safe extraction whether database returns a tuple or dictionary
+        if isinstance(new_user, dict):
+            session['user_id'] = new_user['id']
+        else:
+            session['user_id'] = new_user[0]
+            
         session['user_phone'] = phone
-
         return redirect('/dashboard')
 
     except Exception as e:
@@ -144,8 +151,11 @@ def register():
         return render_template('register.html', error="Registration failed. Please try again.")
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def process_login():
+    if request.method == 'GET':
+        return render_template('login.html')
+
     phone = request.form.get('phone', '').strip()
     login_pass = request.form.get('password', '').strip()
 
@@ -154,11 +164,19 @@ def process_login():
         cursor.execute("SELECT id, password FROM users WHERE phone = %s", (phone,))
         user_record = cursor.fetchone()
 
-        # FIX 2: Explicit hash comparison mechanism
-        if user_record and check_password_hash(user_record[1], login_pass):
-            session['user_id'] = user_record[0]
-            session['user_phone'] = phone
-            return redirect('/dashboard')
+        if user_record:
+            # Safe extraction whether database returns a tuple or dictionary
+            if isinstance(user_record, dict):
+                db_id = user_record['id']
+                db_password = user_record['password']
+            else:
+                db_id = user_record[0]
+                db_password = user_record[1]
+
+            if check_password_hash(db_password, login_pass):
+                session['user_id'] = db_id
+                session['user_phone'] = phone
+                return redirect('/dashboard')
         
         return render_template('login.html', error="Invalid phone number or password!")
 
