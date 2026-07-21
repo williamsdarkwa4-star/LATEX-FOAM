@@ -91,7 +91,7 @@ conn.commit()
 
  # 2. Deposits Table (Kept as is, records status modifications automatically)
      cursor.execute('''
-        CREATE TABLE IF NOT EXISTS deposits (
+CREATE TABLE IF NOT EXISTS deposits (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             amount NUMERIC NOT NULL,
@@ -104,7 +104,7 @@ conn.commit()
     
     # 3. Withdrawals Table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS withdrawals (
+CREATE TABLE IF NOT EXISTS withdrawals (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             amount NUMERIC NOT NULL,
@@ -119,7 +119,7 @@ conn.commit()
     
     # 4. User Purchased Plans Table (Added 'last_claimed_date' column)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_plans (
+CREATE TABLE IF NOT EXISTS user_plans (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             plan_id TEXT NOT NULL,
