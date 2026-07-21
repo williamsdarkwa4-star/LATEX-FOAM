@@ -4,162 +4,352 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Dashboard - LATEX FOAM</title>
-    <script src="https://tailwindcss.com"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #000407;
+            color: #ffffff;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        /* Top Header Navigation style */
+        .top-nav {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #111827;
+            background-color: #000810;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-l {
+            color: #22d3ee;
+            font-weight: 900;
+            font-size: 24px;
+            font-style: italic;
+        }
+
+        .user-phone {
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            color: #e5e7eb;
+        }
+
+        .hub-title {
+            font-size: 10px;
+            color: #22d3ee;
+            font-weight: 500;
+        }
+
+        .close-btn {
+            font-size: 12px;
+            background-color: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 6px 12px;
+            color: #9ca3af;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        /* Referral Link Top Styling Card Box */
+        .card-box {
+            margin: 16px;
+            background-color: #000c18;
+            border: 1px solid #083344;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-label {
+            display: block;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #06b6d4;
+            margin-bottom: 8px;
+        }
+
+        .link-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #000408;
+            border-radius: 8px;
+            padding: 8px;
+            border: 1px solid #111827;
+        }
+
+        .link-input {
+            background: transparent;
+            border: none;
+            color: #d1d5db;
+            font-size: 12px;
+            flex: 1;
+            outline: none;
+            font-family: monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .copy-button {
+            background-color: #0891b2;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.2s;
+        }
+
+        /* Total Score Big Banner Block */
+        .total-banner {
+            margin: 0 16px 16px 16px;
+            background: linear-gradient(to bottom, #001020, #00060c);
+            border: 1px solid #083344;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .glow-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px auto;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+        }
+
+        .total-number {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #06b6d4;
+        }
+
+        .total-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* Level Selector Cards Navigation row Grid */
+        .levels-grid {
+            display: grid;
+            grid-template-cols: repeat(3, 1fr);
+            gap: 10px;
+            margin: 0 16px 20px 16px;
+        }
+
+        .level-card {
+            background-color: #000c18;
+            border: 1px solid #111827;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .level-card.active {
+            background-color: #001020;
+            border: 2px solid #06b6d4;
+            transform: scale(1.03);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
+        }
+
+        .level-title {
+            font-size: 10px;
+            color: #6b7280;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .level-card.active .level-title {
+            color: #06b6d4;
+        }
+
+        .level-rate {
+            font-size: 18px;
+            font-weight: 900;
+            color: #9ca3af;
+        }
+
+        .level-card.active .level-rate {
+            color: #fbbf24;
+        }
+
+        .level-members-count {
+            font-size: 9px;
+            color: #4b5563;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Dynamic Member Items Output wrapper container box list */
+        .roster-area {
+            margin: 0 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #4b5563;
+            font-weight: 500;
+            padding: 40px 16px;
+            background-color: #00050a;
+            border-radius: 12px;
+            border: 1px solid rgba(17, 24, 39, 0.6);
+        }
+
+        .member-row {
+            background-color: #000c18;
+            border: 1px solid #111827;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        .member-id {
+            font-size: 14px;
+            font-weight: 700;
+            color: #e5e7eb;
+            letter-spacing: 0.5px;
+        }
+
+        .member-date {
+            font-size: 10px;
+            color: #4b5563;
+            margin-top: 4px;
+        }
+
+        .member-badge {
+            background-color: rgba(8, 145, 178, 0.1);
+            color: #06b6d4;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 4px;
+            padding: 2px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Fixed Footer Menu styles matching layout image shapes */
+        .bottom-nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #000810;
+            border-top: 1px solid #111827;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 8px;
+            z-index: 100;
+        }
+
+        .nav-item {
+            text-align: center;
+            color: #6b7280;
+            font-size: 10px;
+            font-weight: 500;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-item.active {
+            color: #06b6d4;
+            font-weight: 700;
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            margin-bottom: 2px;
+            text-align: center;
+        }
+    </style>
 </head>
-<body class="bg-[#000407] min-h-screen font-sans text-white pb-24">
+<body>
 
-    <!-- Top Navigation Header -->
-    <div class="p-4 flex items-center justify-between border-b border-gray-900 bg-[#000810]">
-        <div class="flex items-center gap-2">
-            <span class="text-cyan-400 font-black text-xl italic">L</span>
+    <!-- Header Section -->
+    <div class="top-nav">
+        <div class="brand-section">
+            <span class="logo-l">L</span>
             <div>
-                <div id="userPhoneDisplay" class="font-bold text-sm tracking-wide text-gray-200">Loading Account...</div>
-                <div class="text-[10px] text-cyan-400 font-medium">Team Network Hub</div>
+                <div id="userPhoneDisplay" class="user-phone">Loading Account...</div>
+                <div class="hub-title">Team Network Hub</div>
             </div>
         </div>
-        <a href="/dashboard" class="text-xs bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-gray-400 hover:text-white transition">✕ Close</a>
+        <a href="/dashboard" class="close-btn">✕ Close</a>
     </div>
 
-    <!-- Referral Link Top Copy Component -->
-    <div class="p-4">
-        <div class="w-full bg-[#000c18] border border-cyan-950/40 rounded-xl p-4 shadow-lg">
-            <label class="block text-[10px] uppercase font-bold tracking-wider text-cyan-500 mb-2">Your Invitation Link</label>
-            <div class="flex items-center gap-2 bg-[#000408] rounded-lg p-2 border border-gray-900">
-                <input type="text" id="refLinkInput" readonly value="https://onrender.com..." class="bg-transparent text-xs text-gray-300 flex-1 outline-none select-all truncate font-mono">
-                <button onclick="copyReferralLink()" id="copyBtn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-1.5 px-3 rounded transition-colors whitespace-nowrap">Copy Link</button>
-            </div>
+    <!-- Referral Link Display -->
+    <div class="card-box">
+        <label class="input-label">Your Invitation Link</label>
+        <div class="link-container">
+            <input type="text" id="refLinkInput" readonly value="https://onrender.com..." class="link-input">
+            <button onclick="copyReferralLink()" id="copyBtn" class="copy-button">Copy Link</button>
         </div>
     </div>
 
-    <!-- Total Team Central Banner Display -->
-    <div class="p-4 pt-0">
-        <div class="w-full bg-gradient-to-b from-[#001020] to-[#00060c] border border-cyan-950/30 rounded-xl p-5 text-center relative overflow-hidden">
-            <div class="w-16 h-16 rounded-full border border-cyan-500/40 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-                <span class="text-cyan-400 text-xl font-black italic">L</span>
-            </div>
-            <div id="totalTeamText" class="text-2xl font-bold tracking-wide text-cyan-400">0</div>
-            <div class="text-[11px] text-gray-500 uppercase font-semibold tracking-wider mt-0.5">Total Members Recruited</div>
+    <!-- Total Count Banner -->
+    <div class="total-banner">
+        <div class="glow-circle">
+            <span class="logo-l" style="font-size:20px;">L</span>
+        </div>
+        <div id="totalTeamText" class="total-number">0</div>
+        <div class="total-label">Total Members Recruited</div>
+    </div>
+
+    <!-- Level Cards Grid Row -->
+    <div class="levels-grid">
+        <div onclick="switchLevel(1)" id="cardLvl1" class="level-card active">
+            <span class="level-title">LEVEL 1</span>
+            <div class="level-rate">30%</div>
+            <div id="countLvl1" class="level-members-count">0 Members</div>
+        </div>
+        <div onclick="switchLevel(2)" id="cardLvl2" class="level-card">
+            <span class="level-title">LEVEL 2</span>
+            <div class="level-rate">2%</div>
+            <div id="countLvl2" class="level-members-count">0 Members</div>
+        </div>
+        <div onclick="switchLevel(3)" id="cardLvl3" class="level-card">
+            <span class="level-title">LEVEL 3</span>
+            <div class="level-rate">1%</div>
+            <div id="countLvl3" class="level-members-count">0 Members</div>
         </div>
     </div>
 
-    <!-- Multi-Level Commission Cards Grid -->
-    <div class="px-4">
-        <div class="grid grid-cols-3 gap-2.5 mb-5">
-            <!-- Level 1 Button Card -->
-            <button onclick="switchLevel(1)" id="cardLvl1" class="bg-[#000c18] border-2 border-cyan-500 rounded-xl p-3 text-center transition-all">
-                <span class="text-[10px] text-cyan-400 font-bold block mb-1">LEVEL 1</span>
-                <div class="text-lg font-black text-amber-400">30%</div>
-                <div id="countLvl1" class="text-[9px] text-gray-500 mt-1 font-medium">0 Members</div>
-            </button>
-            <!-- Level 2 Button Card -->
-            <button onclick="switchLevel(2)" id="cardLvl2" class="bg-[#000c18] border border-gray-900 rounded-xl p-3 text-center transition-all">
-                <span class="text-[10px] text-gray-400 font-bold block mb-1">LEVEL 2</span>
-                <div class="text-lg font-black text-gray-400">2%</div>
-                <div id="countLvl2" class="text-[9px] text-gray-500 mt-1 font-medium">0 Members</div>
-            </button>
-            <!-- Level 3 Button Card -->
-            <button onclick="switchLevel(3)" id="cardLvl3" class="bg-[#000c18] border border-gray-900 rounded-xl p-3 text-center transition-all">
-                <span class="text-[10px] text-gray-400 font-bold block mb-1">LEVEL 3</span>
-                <div class="text-lg font-black text-gray-400">1%</div>
-                <div id="countLvl3" class="text-[9px] text-gray-500 mt-1 font-medium">0 Members</div>
-            </button>
-        </div>
-
-        <!-- Dynamic Downline Members List Output -->
-        <div id="networkListContainer" class="text-center text-xs text-gray-600 font-medium py-10 bg-[#00050a] rounded-xl border border-gray-900/60">
-            Loading team network configurations...
-        </div>
-    </div>
-
-    <!-- Bottom App Navigation Toolbar -->
-    <div class="fixed bottom-0 left-0 right-0 bg-[#000810] border-t border-gray-900 h-16 flex items-center justify-around px-2 shadow-inner z-50">
-        <a href="/dashboard" class="text-center text-gray-500 text-[10px] font-medium"><div class="text-lg mb-0.5">🏠</div>Home</a>
-        <a href="/orders" class="text-center text-gray-500 text-[10px] font-medium"><div class="text-lg mb-0.5">📋</div>Orders</a>
-        <a href="/team" class="text-center text-cyan-400 text-[10px] font-bold"><div class="text-lg mb-0.5">👥</div>Team</a>
-        <a href="/profile" class="text-center text-gray-500 text-[10px] font-medium"><div class="text-lg mb-0.5">👤</div>Profile</a>
-    </div>
-
-    <script>
-        let dashboardDataCache = null;
-
-        // Pulls dynamic data from your Python backend API setup
-        async function fetchTeamData() {
-            try {
-                const res = await fetch('/api/team/dashboard-data');
-                if (res.ok) {
-                    dashboardDataCache = await res.json();
-                    
-                    // Inject system user meta descriptions into components
-                    document.getElementById('userPhoneDisplay').innerText = dashboardDataCache.username;
-                    document.getElementById('refLinkInput').value = dashboardDataCache.referral_link;
-                    document.getElementById('totalTeamText').innerText = dashboardDataCache.total_team;
-                    
-                    // Set individual inner member text targets
-                    document.getElementById('countLvl1').innerText = dashboardDataCache.levels["1"].count + " Members";
-                    document.getElementById('countLvl2').innerText = dashboardDataCache.levels["2"].count + " Members";
-                    document.getElementById('countLvl3').innerText = dashboardDataCache.levels["3"].count + " Members";
-                    
-                    switchLevel(1); // Set Level 1 open by default
-                } else {
-                    document.getElementById('networkListContainer').innerText = "Session expired. Please log in again.";
-                }
-            } catch (error) {
-                document.getElementById('networkListContainer').innerText = "Network data stream connection lost.";
-            }
-        }
-
-        // Logic to switch active UI card selection visual properties
-        function switchLevel(selectedLvl) {
-            if (!dashboardDataCache) return;
-
-            [1, 2, 3].forEach(num => {
-                const card = document.getElementById(`cardLvl${num}`);
-                const span = card.querySelector('span');
-                const rate = card.querySelector('div');
-                if (num === selectedLvl) {
-                    card.className = "bg-[#001020] border-2 border-cyan-500 rounded-xl p-3 text-center scale-105 transition-all shadow-[0_0_15px_rgba(6,182,212,0.1)]";
-                    span.className = "text-[10px] text-cyan-400 font-bold block mb-1";
-                    rate.className = "text-lg font-black text-amber-400";
-                } else {
-                    card.className = "bg-[#000c18] border border-gray-900 rounded-xl p-3 text-center transition-all";
-                    span.className = "text-[10px] text-gray-500 font-bold block mb-1";
-                    rate.className = "text-lg font-black text-gray-400";
-                }
-            });
-
-            const displayArea = document.getElementById('networkListContainer');
-            const members = dashboardDataCache.levels[selectedLvl].members;
-
-            if (members.length === 0) {
-                displayArea.className = "text-center text-xs text-gray-600 font-medium py-10 bg-[#00050a] rounded-xl border border-gray-900/60";
-                displayArea.innerHTML = "No Downline Records Registered";
-            } else {
-                displayArea.className = "space-y-2 text-left bg-transparent border-0 py-0";
-                displayArea.innerHTML = members.map(m => `
-                    <div class="bg-[#000c18] border border-gray-900 rounded-xl p-4 flex justify-between items-center shadow-md">
-                        <div>
-                            <div class="text-sm font-bold text-gray-200 tracking-wide">Account ID: #${m.id}</div>
-                            <div class="text-[10px] text-gray-500 mt-1">Joined Network: ${m.date}</div>
-                        </div>
-                        <span class="bg-cyan-950/60 text-cyan-400 border border-cyan-900/50 rounded px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Tier Verified</span>
-                    </div>
-                `).join('');
-            }
-        }
-
-        // Clip board control script to capture text on mobile browser viewports
-        function copyReferralLink() {
-            const inputField = document.getElementById('refLinkInput');
-            inputField.select();
-            inputField.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(inputField.value);
-
-            const copyBtn = document.getElementById('copyBtn');
-            copyBtn.innerText = "Copied! ✓";
-            copyBtn.className = "bg-amber-500 text-black font-bold text-xs py-1.5 px-3 rounded transition-colors whitespace-nowrap";
-            setTimeout(() => {
-                copyBtn.innerText = "Copy Link";
-                copyBtn.className = "bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-1.5 px-3 rounded transition-colors whitespace-nowrap";
-            }, 2000);
-        }
-
+    <!-- List Records Container Block Area -->
