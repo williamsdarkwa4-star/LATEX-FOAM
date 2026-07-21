@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import os
 import psycopg2
+import random
+import string
 from datetime import datetime
 
 app = Flask(__name__)
@@ -141,7 +143,11 @@ def register():
         phone = request.form.get('phone')
         password = request.form.get('password')
         withdraw_password = request.form.get('withdraw_password')
-        invite_code = request.form.get('invite_code')  # Captures code submitted by user form
+        used_referral = request.form.get('invite_code')
+
+        my_referral_code = ''.join(
+            random.choices(string.ascii_uppercase + string.digits, k=6)
+        )
         
         if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
@@ -155,17 +161,29 @@ def register():
         try:
             cursor = conn.cursor()
             
-            # 1. Execute insertion statement using PostgreSQL safe string placeholders
-            cursor.execute(
-                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
-                (phone, password, withdraw_password, invite_code)
-            )
+          cursor.execute(
+    '''
+    INSERT INTO users 
+    (phone, password, withdraw_password, referral_code, referred_by, balance)
+    VALUES (%s, %s, %s, %s, %s, 30.0)
+    RETURNING id
+    ''',
+    (
+        phone,
+        password,
+        withdraw_password,
+        my_referral_code,
+        used_referral
+    )
+)
             new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
             
             # 2. Level System Hook: Check if user registered via another member's invite link
-            if invite_code:
-                # Find the user record belonging to that invite code to get their internal user ID
-                cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
+            if used_referral:
+    cursor.execute(
+        'SELECT id FROM users WHERE referral_code = %s',
+        (used_referral,)
+    )
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
@@ -219,43 +237,87 @@ def team_page_view():
         return "Unauthorized. Please log in first.", 401
     return render_template('team_dashboard.html')
 
+
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
     user_id = session.get('user_id')
+
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    # 1. Fetch logged-in user identifier metadata safely from active sessions
-    user_phone = session.get('user_phone', '0204216188') 
+    conn = get_db_connection()
 
-    # 2. Automatically generate the individual's UNIQUE invitation link using your live URL
-    unique_referral_link = f"https://onrender.com{user_id}"
+    if conn is None:
+        return jsonify({"error": "Database unavailable"}), 500
 
-    # 3. Pull level downlines directly from the Render database core
-    downline = ReferralNetwork.query.filter_by(referrer_id=user_id).all()
-    
+    cursor = conn.cursor()
+
+    # Get user's referral code
+    cursor.execute(
+        "SELECT phone, referral_code FROM users WHERE id=%s",
+        (user_id,)
+    )
+
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_phone = user['phone']
+    referral_code = user['referral_code']
+
+
+    # Create referral link
+    referral_link = (
+        f"https://latex-foam-site.onrender.com/register?ref={referral_code}"
+    )
+
+
+    # Get team members
+    cursor.execute(
+        """
+        SELECT referred_id, level, joined_at
+        FROM referral_network
+        WHERE referrer_id=%s
+        ORDER BY joined_at DESC
+        """,
+        (user_id,)
+    )
+
+    members = cursor.fetchall()
+
+
     levels_data = {
         1: {"count": 0, "commission_rate": "30%", "members": []},
         2: {"count": 0, "commission_rate": "2%", "members": []},
         3: {"count": 0, "commission_rate": "1%", "members": []}
     }
-    
-    for member in downline:
-        lvl = member.level
-        if lvl in levels_data:
-            levels_data[lvl]["count"] += 1
-            levels_data[lvl]["members"].append({
-                "id": member.referred_id,
-                "date": member.joined_at.strftime('%Y-%m-%d %H:%M')
+
+
+    for member in members:
+        level = member['level']
+
+        if level in levels_data:
+            levels_data[level]["count"] += 1
+            levels_data[level]["members"].append({
+                "id": member['referred_id'],
+                "date": str(member['joined_at'])
             })
+
+
+    cursor.close()
+    conn.close()
+
 
     return jsonify({
         "username": user_phone,
-        "referral_link": unique_referral_link,
-        "total_team": len(downline),
+        "referral_code": referral_code,
+        "referral_link": referral_link,
+        "total_team": len(members),
         "levels": levels_data
     })
-
 
 
 
