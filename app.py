@@ -170,7 +170,7 @@ def register():
             flash('Please fill in all required fields!', 'error')
             return redirect(url_for('register'))
             
-                conn = get_db_connection()
+        conn = get_db_connection()
         if conn is None:
             flash('Database engine offline locally. Test registration on live host.', 'error')
             return redirect(url_for('register'))
@@ -193,15 +193,14 @@ def register():
                 )
             )
 
-
             new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
             
             # 2. Level System Hook: Check if user registered via another member's invite link
             if used_referral:
-    cursor.execute(
-        'SELECT id FROM users WHERE referral_code = %s',
-        (used_referral,)
-    )
+                cursor.execute(
+                    'SELECT id FROM users WHERE referral_code = %s',
+                    (used_referral,)
+                )
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
