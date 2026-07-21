@@ -2,8 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import os
 import psycopg2
-import random
-import string
 from datetime import datetime
 
 app = Flask(__name__)
@@ -38,76 +36,22 @@ def init_db():
     conn = get_db_connection()
     if conn is None:
         return
-        cursor = conn.cursor()
-
-
-
-
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    phone TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    withdraw_password TEXT NOT NULL,
-    referral_code TEXT UNIQUE NOT NULL,
-    referred_by TEXT,
-    balance NUMERIC DEFAULT 30.0
-)
-''')
-
-
-
-
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS referral_network (
-    id SERIAL PRIMARY KEY,
-    referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    level INTEGER NOT NULL,
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-''')
-# Add referral columns safely for existing users
-try:
+        
+    cursor = conn.cursor()
     
-    
-    
-    
-    cursor.execute("""
-        ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE
-    """)
-    
-    
-    
-    
-    cursor.execute("""
-        ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS referred_by TEXT
-    """)
-    
-    conn.commit()
-
-except Exception as e:
-    conn.rollback()
-    print("Referral columns update:", e)
-    # Referral Network Table
-   
-    
-    
-    
+    # 1. Users Table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS referral_network (
+        CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
-            referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            level INTEGER NOT NULL,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            phone TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            withdraw_password TEXT NOT NULL,
+            invite_code TEXT,
+            balance NUMERIC DEFAULT 30.0
         )
     ''')
-
-
-    # 2. Deposits Table
+    
+    # 2. Deposits Table (Kept as is, records status modifications automatically)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS deposits (
             id SERIAL PRIMARY KEY,
@@ -119,8 +63,7 @@ except Exception as e:
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-
-
+    
     # 3. Withdrawals Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS withdrawals (
@@ -138,7 +81,7 @@ except Exception as e:
     
     # 4. User Purchased Plans Table (Added 'last_claimed_date' column)
     cursor.execute('''
-CREATE TABLE IF NOT EXISTS user_plans (
+        CREATE TABLE IF NOT EXISTS user_plans (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             plan_id TEXT NOT NULL,
@@ -160,11 +103,7 @@ def register():
         phone = request.form.get('phone')
         password = request.form.get('password')
         withdraw_password = request.form.get('withdraw_password')
-        used_referral = request.form.get('invite_code')
-
-        my_referral_code = ''.join(
-            random.choices(string.ascii_uppercase + string.digits, k=6)
-        )
+        invite_code = request.form.get('invite_code')  # Captures code submitted by user form
         
         if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
@@ -177,30 +116,18 @@ def register():
             
         try:
             cursor = conn.cursor()
+            
+            # 1. Execute insertion statement using PostgreSQL safe string placeholders
             cursor.execute(
-                '''
-                INSERT INTO users 
-                (phone, password, withdraw_password, referral_code, referred_by, balance)
-                VALUES (%s, %s, %s, %s, %s, 30.0)
-                RETURNING id
-                ''',
-                (
-                    phone,
-                    password,
-                    withdraw_password,
-                    my_referral_code,
-                    used_referral
-                )
+                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
+                (phone, password, withdraw_password, invite_code)
             )
-
             new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
             
             # 2. Level System Hook: Check if user registered via another member's invite link
-            if used_referral:
-                cursor.execute(
-                    'SELECT id FROM users WHERE referral_code = %s',
-                    (used_referral,)
-                )
+            if invite_code:
+                # Find the user record belonging to that invite code to get their internal user ID
+                cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
@@ -256,84 +183,42 @@ def team_page_view():
 
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
-
-    if not session.get('user_id'):
+    user_id = session.get('user_id')
+    if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    user_id = session['user_id']
+    # 1. Fetch logged-in user identifier metadata safely from active sessions
+    user_phone = session.get('user_phone', '0204216188') 
 
-    conn = get_db_connection()
+    # 2. Automatically generate the individual's UNIQUE invitation link using your live URL
+    unique_referral_link = f"https://onrender.com{user_id}"
 
-    if conn is None:
-        return jsonify({"error": "Database unavailable"}), 500
-
-    cursor = conn.cursor()
-
-    # Get user phone and referral code
-    cursor.execute(
-        "SELECT phone, referral_code FROM users WHERE id=%s",
-        (user_id,)
-    )
-
-    user = cursor.fetchone()
-
-    if not user:
-        cursor.close()
-        conn.close()
-        return jsonify({"error": "User not found"}), 404
-
-
-    referral_link = f"https://latex-foam-site.onrender.com/register?ref={user['referral_code']}"
-
-    levels = {
-        "1": {"count":0, "members":[]},
-        "2": {"count":0, "members":[]},
-        "3": {"count":0, "members":[]}
+    # 3. Pull level downlines directly from the Render database core
+    downline = ReferralNetwork.query.filter_by(referrer_id=user_id).all()
+    
+    levels_data = {
+        1: {"count": 0, "commission_rate": "30%", "members": []},
+        2: {"count": 0, "commission_rate": "2%", "members": []},
+        3: {"count": 0, "commission_rate": "1%", "members": []}
     }
-
-
-    # Get referral network
-    cursor.execute("""
-        SELECT referred_id, level, joined_at
-        FROM referral_network
-        WHERE referrer_id=%s
-        ORDER BY joined_at DESC
-    """,
-    (user_id,))
-
-
-    members = cursor.fetchall()
-
-
-    for member in members:
-
-        level = str(member['level'])
-
-        if level in levels:
-
-            levels[level]["count"] += 1
-
-            levels[level]["members"].append({
-                "id": member['referred_id'],
-                "date": str(member['joined_at'])
+    
+    for member in downline:
+        lvl = member.level
+        if lvl in levels_data:
+            levels_data[lvl]["count"] += 1
+            levels_data[lvl]["members"].append({
+                "id": member.referred_id,
+                "date": member.joined_at.strftime('%Y-%m-%d %H:%M')
             })
 
-
-    cursor.close()
-    conn.close()
-
-
     return jsonify({
-
-        "username": user['phone'],
-
-        "referral_link": referral_link,
-
-        "total_team": len(members),
-
-        "levels": levels
-
+        "username": user_phone,
+        "referral_link": unique_referral_link,
+        "total_team": len(downline),
+        "levels": levels_data
     })
+
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -924,17 +809,16 @@ def admin_handle_deposit(id, action):
 
     return redirect(url_for('admin'))
 
-
 @app.route('/admin/withdrawal/<int:id>/<action>')
 def admin_handle_withdrawal(id, action):
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
-        
+
     conn = get_db_connection()
     if conn is None:
-        flash("Database connection unavailable", "error")
+        flash("Database connection unavailable.", "error")
         return redirect(url_for('admin'))
-        
+
     cursor = conn.cursor()
     # Changed placeholder from '?' to '%s' to match PostgreSQL
     cursor.execute("SELECT user_id, amount, fee FROM withdrawals WHERE id=%s", (id,))
@@ -977,16 +861,18 @@ def recharge():
 def admin_withdraw():
     return render_template('admin_withdraw.html')
 
+
 @app.route('/details')
 def details():
     return render_template('details.html')
-
 @app.route('/admin/logout')
 def admin_logout():
     session.clear()
     return redirect(url_for('login'))
+    return redirect(url_for('admin'))
+    
 
 if __name__ == '__main__':
-    # Initialize the database table structure before running the application server
-    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
+    
+init_db()
