@@ -96,7 +96,6 @@ def init_db():
     cursor.close()
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -174,13 +173,11 @@ def register():
     # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
     url_invite_code = request.args.get('ref', '')
     return render_template('register.html', url_invite_code=url_invite_code)
-
 @app.route('/team')
 def team_page_view():
     if not session.get('user_id'):
         return "Unauthorized. Please log in first.", 401
     return render_template('team_dashboard.html')
-
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
     user_id = session.get('user_id')
@@ -192,6 +189,14 @@ def get_team_dashboard_data():
 
     # 2. Automatically generate the individual's UNIQUE invitation link using your live URL
     unique_referral_link = f"https://onrender.com{user_id}"
+
+    # Line 185 onwards (Ensure this matches the 4-space indentation above)
+    # If this is inside a try block or another structure, indent it by an additional 4 spaces.
+    cursor.execute(
+        "SELECT * FROM users WHERE id = %s", 
+        (user_id,)
+    )
+
 
     # 3. Pull level downlines directly from the Render database core
     downline = ReferralNetwork.query.filter_by(referrer_id=user_id).all()
@@ -217,10 +222,6 @@ def get_team_dashboard_data():
         "total_team": len(downline),
         "levels": levels_data
     })
-
-
-
-
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -250,8 +251,6 @@ def login():
             return redirect(url_for('login'))
             
     return render_template('login.html')
-
-
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: 
@@ -270,7 +269,6 @@ def dashboard():
     
     current_balance = float(result['balance']) if result else 0.0
     return render_template('dashboard.html', user_phone=session['phone'], user_balance=current_balance)
-
 @app.route('/deposit', methods=['GET', 'POST'])
 def deposit():
     if 'user_id' not in session: 
@@ -317,7 +315,6 @@ def deposit():
         user_balance = float(result['balance']) if result else 0.0
         cursor.close()
         conn.close()
-        
     return render_template('deposit.html', user_balance=user_balance)
 @app.route('/withdraw', methods=['GET', 'POST'])
 def withdraw():
@@ -421,7 +418,6 @@ def withdraw():
         'withdraw.html',
         user_balance=user_balance
     )
-''
 @app.route('/history')
 def history():
     if 'user_id' not in session: 
@@ -545,7 +541,6 @@ def claim_profit(user_plan_id):
     cursor.close()
     conn.close()
     return redirect(url_for('history'))
-
 @app.route('/service')
 def service():
     return render_template('service.html')
@@ -615,7 +610,6 @@ def plan():
     cursor.close()
     conn.close()
     return render_template('plan.html', plans=PLANS_DATA)
-
 @app.route('/my_plan')
 def my_plan():
     return render_template('my_plan.html')
@@ -647,7 +641,6 @@ def profile():
         account_number=user_phone,
         user_balance=user_balance
     )
-
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
