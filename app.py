@@ -39,7 +39,14 @@ def init_db():
     if conn is None:
         return
         
+    
+    
+    
     cursor = conn.cursor()
+
+
+
+
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -51,6 +58,10 @@ CREATE TABLE IF NOT EXISTS users (
     balance NUMERIC DEFAULT 30.0
 )
 ''')
+
+
+
+
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS referral_network (
     id SERIAL PRIMARY KEY,
@@ -62,10 +73,17 @@ CREATE TABLE IF NOT EXISTS referral_network (
 ''')
 # Add referral columns safely for existing users
 try:
+    
+    
+    
+    
     cursor.execute("""
         ALTER TABLE users 
         ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE
     """)
+    
+    
+    
     
     cursor.execute("""
         ALTER TABLE users 
@@ -78,6 +96,10 @@ except Exception as e:
     conn.rollback()
     print("Referral columns update:", e)
     # Referral Network Table
+   
+    
+    
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS referral_network (
             id SERIAL PRIMARY KEY,
