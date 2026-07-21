@@ -36,163 +36,154 @@
             letter-spacing: 0.5px;
         }
 
-        .logo-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 40px;
-        }
-
-        .logo-circle {
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #0e3a3e 0%, #05181a 70%, #000000 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 0 20px rgba(0, 188, 212, 0.1);
-        }
-
-        /* Temporary stylized "L" placeholder logo matching the 'X' style */
-        .logo-icon {
-            font-size: 55px;
-            font-weight: 900;
-            color: #e5c158;
-            text-shadow: 0 0 10px rgba(229, 193, 88, 0.6), 2px 2px 2px #000;
-            font-style: italic;
-        }
-
         .form-group {
             margin-bottom: 20px;
+            position: relative;
         }
 
         .form-group label {
             display: block;
-            font-size: 15px;
-            margin-bottom: 12px;
-            color: #ffffff;
-            font-weight: 400;
+            font-size: 12px;
+            color: #888888;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
         .form-group input {
             width: 100%;
-            background-color: #050f11;
-            border: 1px solid #102a30;
-            border-radius: 12px;
-            padding: 16px;
+            background-color: #111111;
+            border: 1px solid #222222;
             color: #ffffff;
-            font-size: 15px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
             outline: none;
-            transition: border-color 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .form-group input:focus {
-            border-color: #00bcd4;
+            border-color: #00bfff;
+            box-shadow: 0 0 10px rgba(0, 191, 255, 0.1);
         }
 
-        .form-group input::placeholder {
-            color: #3b5256;
+        /* Grayed out styling state for auto-filled invite inputs */
+        .form-group input:read-only {
+            background-color: #090909;
+            border-color: #1a1a1a;
+            color: #00bfff;
+            cursor: not-allowed;
+            font-weight: 600;
         }
 
-        .switch-link {
-            font-size: 14px;
-            margin-top: 20px;
-            margin-bottom: 30px;
-            color: #a0a0a0;
-        }
-
-        .switch-link a {
-            color: #00bcd4;
-            text-decoration: none;
-            margin-left: 5px;
-        }
-
-        .btn-submit {
-            width: 100%;
-            background-color: #00bcd4;
-            color: #000000;
-            border: none;
-            border-radius: 25px;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: center;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-submit:hover {
-            background-color: #0097a7;
-        }
-
-        /* Flash messages notifications */
         .flash-messages {
             margin-bottom: 20px;
+            list-style: none;
+        }
+
+        .flash-message {
             padding: 12px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
+            margin-bottom: 10px;
         }
-        .flash-error {
-            background-color: #721c24;
-            color: #f8d7da;
-            border: 1px solid #f5c6cb;
+
+        .flash-message.error {
+            background-color: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            color: #ff4d4d;
         }
-        .flash-success {
-            background-color: #155724;
-            color: #d4edda;
-            border: 1px solid #c3e6cb;
+
+        .flash-message.success {
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 1px solid rgba(0, 255, 0, 0.2);
+            color: #4dff4d;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background-color: #00bfff;
+            color: #000000;
+            border: none;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: opacity 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 13px;
+            color: #888888;
+        }
+
+        .footer-link a {
+            color: #00bfff;
+            text-decoration: none;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="header">Registration</div>
+        <div class="header">LATEX FOAM REGISTRATION</div>
 
-        <div class="logo-container">
-            <div class="logo-circle">
-                <!-- Replace 'L' text with an <img> tag later once you have an image asset -->
-                <div class="logo-icon">L</div>
-            </div>
-        </div>
-
-        <!-- Notification display panel -->
+        <!-- System Response Alert Loop Banner -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash-messages flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+          {% if messages %}
+            <ul class="flash-messages">
+              {% for category, message in messages %}
+                <li class="flash-message {{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
         {% endwith %}
 
+        <!-- Security Form Structure Processing Layer -->
         <form action="{{ url_for('register') }}" method="POST">
+            
             <div class="form-group">
-                <label for="phone">phone</label>
-                <input type="text" id="phone" name="phone" placeholder="Please enter your phone number" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">Login password</label>
-                <input type="password" id="password" name="password" placeholder="Please enter your login password" required>
+                <label>Phone Number</label>
+                <input type="tel" name="phone" placeholder="Enter phone number" required>
             </div>
 
             <div class="form-group">
-                <label for="withdraw_password">Withdrawal password</label>
-                <input type="password" id="withdraw_password" name="withdraw_password" placeholder="Please enter your withdrawal password" required>
+                <label>Login Password</label>
+                <input type="password" name="password" placeholder="Enter security login password" required>
             </div>
 
             <div class="form-group">
-                <label for="invite_code">Invite code</label>
-                <input type="text" id="invite_code" name="invite_code" placeholder="Please enter invite code (optional)">
+                <label>Withdrawal Password</label>
+                <input type="password" name="withdraw_password" placeholder="Set 6-digit withdrawal PIN" required>
             </div>
 
-            <div class="switch-link">
-                Do you already have an account?<a href="{{ url_for('login') }}">Login Now</a>
+            <!-- Enhanced Invitation Code Input Field Setup -->
+            <div class="form-group">
+                <label>Invitation Code</label>
+                <input type="text" 
+                       name="invite_code" 
+                       placeholder="Enter referral invite code" 
+                       value="{{ url_invite_code }}"
+                       {% if url_invite_code %} readonly {% endif %}>
             </div>
 
-            <button type="submit" class="btn-submit">register</button>
+            <button type="submit" class="submit-btn">CREATE PLATFORM ACCOUNT</button>
         </form>
+
+        <div class="footer-link">
+            Already have an active portfolio? <a href="{{ url_for('login') }}">Login here</a>
+        </div>
     </div>
 
 </body>
