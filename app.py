@@ -867,6 +867,56 @@ def admin_withdraw():
     return render_template('admin_withdraw.html')
 
 
+@app.route('/api/admin/users-list', methods=['GET'])
+def admin_get_all_users():
+    if not session.get('user_id') or not session.get('is_admin'):
+        return jsonify({"error": "Forbidden"}), 403
+
+    cursor = connection.cursor()
+    # 2. Fetch all user records so the admin can monitor balances and accounts
+    cursor.execute("SELECT id, phone, account_number, balance FROM users ORDER BY id DESC")
+    users = cursor.fetchall()
+    
+    user_list = []
+    for u in users:
+        user_list.append({
+            "id": u[0],
+            "phone": u[1],
+            "account_number": u[2] if u[2] else f"ACC-{u[0]:05d}",
+            "balance": float(u[3]) if u[3] else 0.00
+        })
+        
+    return jsonify({"users": user_list})
+
+@app.route('/api/admin/update-user-credentials', methods=['POST'])
+def admin_modify_user_security():
+    if not session.get('user_id') or not session.get('is_admin'):
+        return jsonify({"error": "Forbidden"}), 403
+        
+    data = request.get_json()
+    target_user_id = data.get('user_id')
+    change_type = data.get('type')  # 'login' or 'withdrawal'
+    new_credential = data.get('value')
+    
+    if not target_user_id or not new_credential or len(new_credential) < 6:
+        return jsonify({"error": "Invalid inputs. Minimum 6 characters required."}), 400
+        
+    from werkzeug.security import generate_password_hash
+    hashed_value = generate_password_hash(new_credential)
+    cursor = connection.cursor()
+    
+    # 3. Apply password overrides directly to the targeted user ID
+    if change_type == 'login':
+        cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_value, target_user_id))
+    elif change_type == 'withdrawal':
+        cursor.execute("UPDATE users SET withdrawal_password = %s WHERE id = %s", (hashed_value, target_user_id))
+    else:
+        return jsonify({"error": "Unknown operational flag type"}), 400
+        
+    connection.commit()
+    return jsonify({"success": f"User {target_user_id}'s {change_type} password updated successfully."})
+
+
 @app.route('/details')
 def details():
     return render_template('details.html')
