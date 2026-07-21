@@ -96,84 +96,74 @@ def init_db():
     cursor.close()
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        phone = request.form.get('phone')
-        password = request.form.get('password')
-        withdraw_password = request.form.get('withdraw_password')
-        invite_code = request.form.get('invite_code')  # Captures code submitted by user form
+from werkzeug.security import generate_password_hash, check_password_hash
+
+@app.route('/register', methods=['POST'])
+def process_registration():
+    phone = request.form.get('phone', '').strip()
+    login_pass = request.form.get('password', '').strip()
+    withdraw_pass = request.form.get('withdrawal_password', '').strip()
+    ref_code = request.form.get('ref_code', '').strip()
+
+    if not phone or not login_pass:
+        return render_template('register.html', error="All fields are required!")
+
+    try:
+        cursor = connection.cursor()
         
-        if not phone or not password or not withdraw_password:
-            flash('Please fill in all required fields!', 'error')
-            return redirect(url_for('register'))
-            
-        conn = get_db_connection()
-        if conn is None:
-            flash('Database engine offline locally. Test registration on live host.', 'error')
-            return redirect(url_for('register'))
-            
-        try:
-            cursor = conn.cursor()
-            
-            # 1. Execute insertion statement using PostgreSQL safe string placeholders
-            cursor.execute(
-                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
-                (phone, password, withdraw_password, invite_code)
-            )
-            new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
-            
-            # 2. Level System Hook: Check if user registered via another member's invite link
-            if invite_code:
-                # Find the user record belonging to that invite code to get their internal user ID
-                cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
-                referrer_record = cursor.fetchone()
-                
-                if referrer_record:
-                    direct_referrer_id = referrer_record[0]
-                    
-                    # Track Level 1 connection directly into the database hierarchy
-                    cursor.execute(
-                        'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
-                        (direct_referrer_id, new_user_id)
-                    )
-                    
-                    # Track Level 2 connection (Find out who invited the referrer)
-                    cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (direct_referrer_id,))
-                    level_2_record = cursor.fetchone()
-                    if level_2_record:
-                        cursor.execute(
-                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
-                            (level_2_record[0], new_user_id)
-                        )
-                        
-                        # Track Level 3 connection (Find out who invited the Level 2 master user)
-                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (level_2_record[0],))
-                        level_3_record = cursor.fetchone()
-                        if level_3_record:
-                            cursor.execute(
-                                'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
-                                (level_3_record[0], new_user_id)
-                            )
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('login'))
-            
-        except Exception as e:
-            if conn:
-                conn.rollback()  # Rolls back failed transaction modifications safely
-                cursor.close()
-                conn.close()
-            flash('This phone number is already registered!', 'error')
-            return redirect(url_for('register'))
-            
-    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
-    url_invite_code = request.args.get('ref', '')
-    return render_template('register.html', url_invite_code=url_invite_code)
-@app.route('/team')
+        # FIX 1: Exact phone match check using parameterized input
+        cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
+        existing_user = cursor.fetchone()
+        
+        if existing_user:
+            return render_template('register.html', error="This phone number is already registered!")
+
+        # Hash passwords securely before insertion
+        hashed_login = generate_password_hash(login_pass)
+        hashed_withdraw = generate_password_hash(withdraw_pass) if withdraw_pass else None
+
+        # Insert fresh user account record
+        cursor.execute(
+            "INSERT INTO users (phone, password, withdrawal_password, referral_code, balance) VALUES (%s, %s, %s, %s, 0.00)",
+            (phone, hashed_login, hashed_withdraw, ref_code)
+        )
+        connection.commit()
+
+        # Log user into active session memory instantly
+        cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
+        new_user = cursor.fetchone()
+        session['user_id'] = new_user[0]
+        session['user_phone'] = phone
+
+        return redirect('/dashboard')
+
+    except Exception as e:
+        print(f"Registration Error: {e}")
+        return render_template('register.html', error="Registration failed. Please try again.")
+
+
+@app.route('/login', methods=['POST'])
+def process_login():
+    phone = request.form.get('phone', '').strip()
+    login_pass = request.form.get('password', '').strip()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, password FROM users WHERE phone = %s", (phone,))
+        user_record = cursor.fetchone()
+
+        # FIX 2: Explicit hash comparison mechanism
+        if user_record and check_password_hash(user_record[1], login_pass):
+            session['user_id'] = user_record[0]
+            session['user_phone'] = phone
+            return redirect('/dashboard')
+        
+        return render_template('login.html', error="Invalid phone number or password!")
+
+    except Exception as e:
+        print(f"Login Error: {e}")
+        return render_template('login.html', error="Server error during login.")
+
 def team_page_view():
     user_id = session.get('user_id')
     if not user_id:
@@ -234,35 +224,7 @@ def get_team_dashboard_data():
         "total_team": len(downline),
         "levels": levels_data
     })
-@app.route('/', methods=['GET', 'POST'])
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        phone = request.form.get('phone')
-        password = request.form.get('password')
-        
-        conn = get_db_connection()
-        if conn is None:
-            flash('Database engine offline locally.', 'error')
-            return redirect(url_for('login'))
-            
-        cursor = conn.cursor()
-        # Changed placeholders from '?' to '%s' to match PostgreSQL rules
-        cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s AND password = %s', (phone, password))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        
-        if user:
-            # Safely assigns values using explicit dictionary keys mapping instead of index values
-            session['user_id'] = user['id']
-            session['phone'] = user['phone']
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid phone number or password!', 'error')
-            return redirect(url_for('login'))
-            
-    return render_template('login.html')
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: 
