@@ -3,96 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile Settings</title>
+    <title>My Profile Dashboard</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: #020710; color: #ffffff; padding: 20px; }
-        .container { max-width: 480px; margin: 0 auto; width: 100%; }
-        
-        .card-panel { background-color: #050f1e; border: 1px solid #0d1e36; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .label { color: #00bcd4; font-size: 11px; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; letter-spacing: 0.5px; }
-        .value { font-size: 20px; font-weight: bold; margin-bottom: 16px; color: #ffffff; }
-        .money { color: #ffb703; font-size: 26px; }
-        
-        .input-box { display: flex; flex-direction: column; margin-bottom: 18px; }
-        input { background-color: #020710; border: 1px solid #0d1e36; padding: 12px; border-radius: 8px; color: white; font-size: 14px; margin-top: 6px; }
-        input:focus { border-color: #00bcd4; outline: none; }
-        
-        .action-btn { width: 100%; background-color: #118ab2; color: white; border: none; padding: 13px; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 5px; }
-        .action-btn.secondary { background-color: #00bcd4; color: #020710; }
+        /* Base Dark Theme Configuration */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #020710;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+        }
+
+        .profile-container {
+            max-width: 480px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Balance & Account Number Cards */
+        .info-card {
+            background-color: #050f1e;
+            border: 1px solid #0d1e36;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .card-label {
+            color: #00bcd4;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+            font-family: sans-serif;
+        }
+
+        .balance-amount {
+            color: #ffb703;
+            font-size: 32px;
+            margin-top: 4px;
+        }
+
+        /* Transaction Action Grid Buttons */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .grid-btn {
+            background-color: #050f1e;
+            border: 1px solid #0d1e36;
+            color: #ffffff;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .grid-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Button Colors and Layout Modifiers */
+        .btn-withdraw {
+            border-left: 4px solid #e63946;
+        }
+        .btn-withdraw:hover { background-color: #141624; }
+
+        .btn-deposit {
+            border-left: 4px solid #2a9d8f;
+        }
+        .btn-deposit:hover { background-color: #0a1f24; }
+
+        .btn-plan {
+            grid-column: span 2;
+            background-color: #118ab2;
+            border: none;
+            padding: 15px;
+            font-size: 15px;
+        }
+        .btn-plan:hover { background-color: #0077b6; }
+
+        /* Core Execution Navigation Finish Button */
+        .btn-done {
+            width: 100%;
+            background-color: #00bcd4;
+            color: #020710;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+        .btn-done:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- Balance and Wallet Information Grid -->
-        <div class="card-panel">
-            <div class="label">User Account Number</div>
-            <div class="value" id="accNumber">Loading...</div>
-            
-            <div class="label">Current Available Balance</div>
-            <div class="value money" id="accBalance">$0.00</div>
+    <div class="profile-container">
+
+        <!-- User Account Card (No Changes to Backend Names) -->
+        <div class="info-card">
+            <div class="card-label">User Account Number</div>
+            <div class="card-value" id="accountNoDisplay">Loading...</div>
         </div>
 
-        <!-- Changing Login Code -->
-        <div class="card-panel">
-            <div class="label" style="color:#118ab2;">Account Security</div>
-            <h4 style="margin: 5px 0 15px 0;">Change Login Password</h4>
-            <div class="input-box">
-                <input type="password" id="loginPassInput" placeholder="Enter new login password">
-            </div>
-            <button class="action-btn" onclick="submitSecurityUpdate('login', 'loginPassInput')">Update Login Password</button>
+        <!-- Wallet Fund Balance Card -->
+        <div class="info-card">
+            <div class="card-label">Current Available Balance</div>
+            <div class="card-value balance-amount" id="balanceDisplay">$0.00</div>
         </div>
 
-        <!-- Changing Transaction Security Code -->
-        <div class="card-panel">
-            <div class="label" style="color:#00bcd4;">Funds Protection</div>
-            <h4 style="margin: 5px 0 15px 0;">Change Withdrawal Password</h4>
-            <div class="input-box">
-                <input type="password" id="withdrawPassInput" placeholder="Enter new withdrawal password">
-            </div>
-            <button class="action-btn secondary" onclick="submitSecurityUpdate('withdrawal', 'withdrawPassInput')">Update Withdrawal Password</button>
+        <!-- Finance Utilities Dashboard Panel Operations Grid -->
+        <div class="action-grid">
+            <!-- 1. Withdraw Button -->
+            <button class="grid-btn btn-withdraw" onclick="navigateTo('/withdraw')">
+                <span>💸</span> Withdraw
+            </button>
+
+            <!-- 2. Deposit Button -->
+            <button class="grid-btn btn-deposit" onclick="navigateTo('/deposit')">
+                <span>💳</span> Deposit
+            </button>
+
+            <!-- 3. Plan Button -->
+            <button class="grid-btn btn-plan" onclick="navigateTo('/plan')">
+                <span>📦</span> View Packages & Plans
+            </button>
         </div>
+
+        <!-- 4. Done Button (Returns to Main Menu Home Dashboard) -->
+        <button class="btn-done" onclick="navigateTo('/dashboard')">
+            Done
+        </button>
+
     </div>
 
+    <!-- UI Core Logic Controller Integration -->
     <script>
-        // Load initial balance stats automatically
+        // Client route redirection helper engine
+        function navigateTo(routePath) {
+            window.location.href = routePath;
+        }
+
+        // Asynchronously pull credentials on load execution phase
         window.addEventListener('DOMContentLoaded', () => {
-            fetch('/api/user/account-overview')
-                .then(res => res.json())
+            fetch('/api/user/account-details')
+                .then(response => {
+                    if (!response.ok) throw new Error("Connection drop");
+                    return response.json();
+                })
                 .then(data => {
-                    if(!data.error) {
-                        document.getElementById('accNumber').innerText = data.account_number;
-                        document.getElementById('accBalance').innerText = "$" + data.balance.toFixed(2);
+                    if (!data.error) {
+                        // Dynamically update strings mapping to matching elements
+                        document.getElementById('accountNoDisplay').innerText = data.account_number;
+                        document.getElementById('balanceDisplay').innerText = "$" + data.balance.toFixed(2);
+                    } else {
+                        fallbackUI();
                     }
+                })
+                .catch(error => {
+                    console.error("Profile payload issue:", error);
+                    fallbackUI();
                 });
         });
 
-        // Modular handling for payload submissions
-        function submitSecurityUpdate(targetType, inputElementId) {
-            const inputField = document.getElementById(inputElementId);
-            const passwordValue = inputField.value.trim();
-            
-            if(passwordValue.length < 6) {
-                alert("The password field requires at least 6 characters.");
-                return;
-            }
-
-            fetch('/api/user/update-security', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: targetType, value: passwordValue })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    alert(data.success);
-                    inputField.value = ""; // Flush memory state safely
-                } else {
-                    alert(data.error || "Update operation encountered an issue.");
-                }
-            })
-            .catch(err => alert("Communication error with server infrastructure."));
+        function fallbackUI() {
+            document.getElementById('accountNoDisplay').innerText = "Unavailable";
+            document.getElementById('balanceDisplay').innerText = "$0.00";
         }
     </script>
 </body>
