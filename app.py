@@ -38,11 +38,7 @@ def init_db():
     conn = get_db_connection()
     if conn is None:
         return
-        
-    
-    
-    
-    cursor = conn.cursor()
+        cursor = conn.cursor()
 
 
 
@@ -932,13 +928,11 @@ def admin_handle_deposit(id, action):
 def admin_handle_withdrawal(id, action):
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
-
-    conn = get_db_connection()
+        conn = get_db_connection()
     if conn is None:
         flash("Database connection unavailable.", "error")
         return redirect(url_for('admin'))
-
-    cursor = conn.cursor()
+cursor = conn.cursor()
     # Changed placeholder from '?' to '%s' to match PostgreSQL
     cursor.execute("SELECT user_id, amount, fee FROM withdrawals WHERE id=%s", (id,))
     withdrawal = cursor.fetchone()
