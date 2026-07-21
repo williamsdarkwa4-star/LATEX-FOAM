@@ -152,7 +152,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, background-color 0.2s;
         }
 
         .action-btn:hover {
@@ -205,9 +205,11 @@
             margin-bottom: 4px;
         }
 
-        .lvl-pct-1 { color: #ffb703; font-size: 16px; font-weight: bold; }
-        .lvl-pct-2 { color: #ffb703; font-size: 16px; font-weight: bold; }
-        .lvl-pct-3 { color: #ffb703; font-size: 16px; font-weight: bold; }
+        .lvl-pct-1, .lvl-pct-2, .lvl-pct-3 { 
+            color: #ffb703; 
+            font-size: 16px; 
+            font-weight: bold; 
+        }
 
         .lvl-count {
             color: #4a5d78;
@@ -344,3 +346,4 @@
             <div>Plan</div>
         </a>
         <a href="/profile" class="nav-item">
+            <div class="nav-icon">👤</div>
