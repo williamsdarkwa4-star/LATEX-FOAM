@@ -98,12 +98,11 @@ def init_db():
     print("All PostgreSQL tracking schemas initialised successfully.")
 from werkzeug.security import generate_password_hash, check_password_hash
 
-@app.route('/register', methods=['GET', 'POST'])
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# 1. MATCHING YOUR ORIGINAL REGISTRATION FORM SUBMISSION PATH
+@app.route('/process_registration', methods=['POST'])
 def process_registration():
-    if request.method == 'GET':
-        return render_template('register.html')
-        
-    # Get form data safely
     phone = request.form.get('phone', '').strip()
     login_pass = request.form.get('password', '').strip()
     withdraw_pass = request.form.get('withdrawal_password', '').strip()
@@ -122,11 +121,11 @@ def process_registration():
         if existing_user:
             return render_template('register.html', error="This phone number is already registered!")
 
-        # Hash passwords securely before insertion
+        # Hash passwords securely before database entry
         hashed_login = generate_password_hash(login_pass)
         hashed_withdraw = generate_password_hash(withdraw_pass) if withdraw_pass else None
 
-        # Insert fresh user account record
+        # Insert fresh user record into database
         cursor.execute(
             "INSERT INTO users (phone, password, withdrawal_password, referral_code, balance) VALUES (%s, %s, %s, %s, 0.00)",
             (phone, hashed_login, hashed_withdraw, ref_code)
@@ -137,7 +136,7 @@ def process_registration():
         cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
         new_user = cursor.fetchone()
         
-        # Safe extraction whether database returns a tuple or dictionary
+        # Safely extract user ID whether database returns dict or tuple
         if isinstance(new_user, dict):
             session['user_id'] = new_user['id']
         else:
@@ -151,11 +150,9 @@ def process_registration():
         return render_template('register.html', error="Registration failed. Please try again.")
 
 
-@app.route('/login', methods=['GET', 'POST'])
+# 2. MATCHING YOUR ORIGINAL LOGIN FORM SUBMISSION PATH
+@app.route('/process_login', methods=['POST'])
 def process_login():
-    if request.method == 'GET':
-        return render_template('login.html')
-
     phone = request.form.get('phone', '').strip()
     login_pass = request.form.get('password', '').strip()
 
@@ -165,7 +162,7 @@ def process_login():
         user_record = cursor.fetchone()
 
         if user_record:
-            # Safe extraction whether database returns a tuple or dictionary
+            # Safely extract details whether database returns dict or tuple
             if isinstance(user_record, dict):
                 db_id = user_record['id']
                 db_password = user_record['password']
