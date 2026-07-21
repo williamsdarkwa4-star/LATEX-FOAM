@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash,jsonify
 import sqlite3
 import os
 import psycopg2
@@ -97,14 +97,13 @@ def init_db():
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
 
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         phone = request.form.get('phone')
         password = request.form.get('password')
         withdraw_password = request.form.get('withdraw_password')
-        invite_code = request.form.get('invite_code')
+        invite_code = request.form.get('invite_code')  # Captures code submitted by user form
         
         if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
@@ -117,25 +116,109 @@ def register():
             
         try:
             cursor = conn.cursor()
-            # Changed parameterized placeholders from '?' to '%s' to match PostgreSQL
+            
+            # 1. Execute insertion statement using PostgreSQL safe string placeholders
             cursor.execute(
-                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0)', 
+                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
                 (phone, password, withdraw_password, invite_code)
             )
+            new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
+            
+            # 2. Level System Hook: Check if user registered via another member's invite link
+            if invite_code:
+                # Find the user record belonging to that invite code to get their internal user ID
+                cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
+                referrer_record = cursor.fetchone()
+                
+                if referrer_record:
+                    direct_referrer_id = referrer_record[0]
+                    
+                    # Track Level 1 connection directly into the database hierarchy
+                    cursor.execute(
+                        'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
+                        (direct_referrer_id, new_user_id)
+                    )
+                    
+                    # Track Level 2 connection (Find out who invited the referrer)
+                    cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (direct_referrer_id,))
+                    level_2_record = cursor.fetchone()
+                    if level_2_record:
+                        cursor.execute(
+                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
+                            (level_2_record[0], new_user_id)
+                        )
+                        
+                        # Track Level 3 connection (Find out who invited the Level 2 master user)
+                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (level_2_record[0],))
+                        level_3_record = cursor.fetchone()
+                        if level_3_record:
+                            cursor.execute(
+                                'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
+                                (level_3_record[0], new_user_id)
+                            )
+            
             conn.commit()
             cursor.close()
             conn.close()
             flash('Registration successful! Please login.', 'success')
             return redirect(url_for('login'))
+            
         except Exception as e:
-            # Catches uniqueness integrity constraint errors on PostgreSQL
             if conn:
+                conn.rollback()  # Rolls back failed transaction modifications safely
                 cursor.close()
                 conn.close()
             flash('This phone number is already registered!', 'error')
             return redirect(url_for('register'))
             
-    return render_template('register.html')
+    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
+    url_invite_code = request.args.get('ref', '')
+    return render_template('register.html', url_invite_code=url_invite_code)
+
+@app.route('/team')
+def team_page_view():
+    if not session.get('user_id'):
+        return "Unauthorized. Please log in first.", 401
+    return render_template('team_dashboard.html')
+
+@app.route('/api/team/dashboard-data', methods=['GET'])
+def get_team_dashboard_data():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # 1. Fetch logged-in user identifier metadata safely from active sessions
+    user_phone = session.get('user_phone', '0204216188') 
+
+    # 2. Automatically generate the individual's UNIQUE invitation link using your live URL
+    unique_referral_link = f"https://onrender.com{user_id}"
+
+    # 3. Pull level downlines directly from the Render database core
+    downline = ReferralNetwork.query.filter_by(referrer_id=user_id).all()
+    
+    levels_data = {
+        1: {"count": 0, "commission_rate": "30%", "members": []},
+        2: {"count": 0, "commission_rate": "2%", "members": []},
+        3: {"count": 0, "commission_rate": "1%", "members": []}
+    }
+    
+    for member in downline:
+        lvl = member.level
+        if lvl in levels_data:
+            levels_data[lvl]["count"] += 1
+            levels_data[lvl]["members"].append({
+                "id": member.referred_id,
+                "date": member.joined_at.strftime('%Y-%m-%d %H:%M')
+            })
+
+    return jsonify({
+        "username": user_phone,
+        "referral_link": unique_referral_link,
+        "total_team": len(downline),
+        "levels": levels_data
+    })
+
+
 
 
 @app.route('/', methods=['GET', 'POST'])
