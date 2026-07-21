@@ -89,10 +89,8 @@ CREATE TABLE IF NOT EXISTS referral_network (
 
 conn.commit()
 
-
-    
-    # 2. Deposits Table (Kept as is, records status modifications automatically)
-    cursor.execute('''
+ # 2. Deposits Table (Kept as is, records status modifications automatically)
+     cursor.execute('''
         CREATE TABLE IF NOT EXISTS deposits (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
