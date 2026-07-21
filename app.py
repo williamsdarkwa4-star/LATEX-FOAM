@@ -180,7 +180,7 @@ def team_page_view():
         return "Unauthorized. Please log in first.", 401
         
     # Automatically generate the individual's UNIQUE invitation link
-    base_url = "https://onrender.com"  # ← Change this to your live Render URL
+    base_url = "https://latex-foam-site.onrender.com"  # ← Change this to your live Render URL
     unique_referral_link = f"{base_url}/register?ref={user_id}"
     
     return render_template('team_dashboard.html', invite_link=unique_referral_link)
