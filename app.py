@@ -238,18 +238,14 @@ def team_page_view():
     return render_template('team_dashboard.html')
 
 
-@app.route('/api/team/dashboard-data', methods=['GET'])
+@app.route('/api/team/dashboard-data')
 def get_team_dashboard_data():
-    user_id = session.get('user_id')
-
-    if not user_id:
+    if not session.get('user_id'):
         return jsonify({"error": "Unauthorized"}), 401
 
+    user_id = session['user_id']
+
     conn = get_db_connection()
-
-    if conn is None:
-        return jsonify({"error": "Database unavailable"}), 500
-
     cursor = conn.cursor()
 
     # Get user's referral code
@@ -257,68 +253,43 @@ def get_team_dashboard_data():
         "SELECT phone, referral_code FROM users WHERE id=%s",
         (user_id,)
     )
-
     user = cursor.fetchone()
 
-    if not user:
-        cursor.close()
-        conn.close()
-        return jsonify({"error": "User not found"}), 404
+    referral_link = f"https://LATEX_FOAM-SITE.onrender.com/register?ref={user['referral_code']}"
 
-    user_phone = user['phone']
-    referral_code = user['referral_code']
+    levels = {
+        "1": {"count": 0, "members": []},
+        "2": {"count": 0, "members": []},
+        "3": {"count": 0, "members": []}
+    }
 
-
-    # Create referral link
-    referral_link = (
-        f"https://latex-foam-site.onrender.com/register?ref={referral_code}"
-    )
-
-
-    # Get team members
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT referred_id, level, joined_at
         FROM referral_network
         WHERE referrer_id=%s
         ORDER BY joined_at DESC
-        """,
-        (user_id,)
-    )
+    """, (user_id,))
 
     members = cursor.fetchall()
 
-
-    levels_data = {
-        1: {"count": 0, "commission_rate": "30%", "members": []},
-        2: {"count": 0, "commission_rate": "2%", "members": []},
-        3: {"count": 0, "commission_rate": "1%", "members": []}
-    }
-
-
-    for member in members:
-        level = member['level']
-
-        if level in levels_data:
-            levels_data[level]["count"] += 1
-            levels_data[level]["members"].append({
-                "id": member['referred_id'],
-                "date": str(member['joined_at'])
+    for m in members:
+        level = str(m['level'])
+        if level in levels:
+            levels[level]["count"] += 1
+            levels[level]["members"].append({
+                "id": m['referred_id'],
+                "date": str(m['joined_at'])
             })
-
 
     cursor.close()
     conn.close()
 
-
     return jsonify({
-        "username": user_phone,
-        "referral_code": referral_code,
+        "username": user['phone'],
         "referral_link": referral_link,
         "total_team": len(members),
-        "levels": levels_data
+        "levels": levels
     })
-
 
 
 @app.route('/', methods=['GET', 'POST'])
