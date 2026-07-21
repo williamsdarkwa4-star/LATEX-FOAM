@@ -1,546 +1,346 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Dashboard - LA</title>
+    <style>
+        /* Reset and Base Theme Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
-<title>Team Dashboard - LATEX FOAM</title>
+        body {
+            background-color: #020710;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 70px; /* Space for bottom nav */
+        }
 
-<style>
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-    font-family:Segoe UI,Tahoma,sans-serif;
-}
+        /* Top Header Navigation */
+        .header-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #020710;
+            padding: 15px 20px;
+            border-bottom: 1px solid #0d192b;
+        }
 
-body{
-    background:#000407;
-    color:white;
-    min-height:100vh;
-    padding-bottom:90px;
-}
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
 
-/* Header */
-.top-nav{
-    padding:16px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    background:#000810;
-    border-bottom:1px solid #111827;
-}
+        .star-badge {
+            position: absolute;
+            top: -8px;
+            left: -6px;
+            color: #ffd700;
+            font-size: 14px;
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+            z-index: 10;
+        }
 
-.brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
+        .blue-sphere {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #00d2ff, #0052cc, #001133);
+            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.8), 0 0 12px rgba(0, 114, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-.logo{
-    color:#22d3ee;
-    font-size:28px;
-    font-weight:900;
-    font-style:italic;
-}
+        .l-shape {
+            font-size: 13px;
+            font-weight: 900;
+            color: #00d2ff;
+            text-shadow: 0 0 6px rgba(0, 210, 255, 0.9);
+        }
 
-.phone{
-    font-size:14px;
-    font-weight:700;
-}
+        .title-text {
+            display: flex;
+            flex-direction: column;
+        }
 
-.subtitle{
-    color:#22d3ee;
-    font-size:10px;
-}
+        .main-title {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 16px;
+            line-height: 1.2;
+        }
 
-.close-btn{
-    text-decoration:none;
-    color:#9ca3af;
-    background:#111827;
-    padding:7px 12px;
-    border-radius:8px;
-}
+        .sub-title {
+            color: #4ba3e3;
+            font-size: 11px;
+            margin-top: 2px;
+        }
 
+        .close-btn {
+            background: none;
+            border: 1px solid #142847;
+            color: #a0aec0;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
 
-/* Cards */
+        .close-btn:hover {
+            background-color: #0b1a30;
+        }
 
-.card{
-    margin:16px;
-    padding:16px;
-    background:#000c18;
-    border:1px solid #083344;
-    border-radius:12px;
-}
+        /* Dashboard Content Container */
+        .dashboard-container {
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            width: 100%;
+        }
 
+        /* Invitation Link Module Card */
+        .card-panel {
+            background-color: #050f1e;
+            border: 1px solid #0d1e36;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
 
-.label{
-    color:#06b6d4;
-    font-size:11px;
-    font-weight:bold;
-    margin-bottom:8px;
-}
+        .panel-label {
+            color: #0088cc;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
 
+        .link-display-box {
+            background-color: #020710;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+            color: #00bcd4;
+            font-family: monospace;
+            font-size: 15px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
 
-.link-box{
-    background:#000;
-    border:1px solid #1f2937;
-    padding:12px;
-    border-radius:8px;
-}
+        .action-btn {
+            width: 100%;
+            background-color: #118ab2;
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
 
+        .action-btn:hover {
+            background-color: #0077b6;
+        }
 
-input{
-    width:100%;
-    background:#000;
-    color:#22d3ee;
-    border:1px solid #1f2937;
-    padding:10px;
-    border-radius:6px;
-    text-align:center;
-    font-family:monospace;
-}
+        /* Counter Metric Panel */
+        .counter-label {
+            color: #ffffff;
+            font-size: 42px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
 
+        .counter-sub {
+            color: #4a5d78;
+            font-size: 11px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
 
-button{
-    width:100%;
-    margin-top:10px;
-    padding:11px;
-    background:#0891b2;
-    color:white;
-    border:0;
-    border-radius:7px;
-    font-weight:bold;
-}
+        /* Level Grid Structure */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
 
+        .level-box {
+            background-color: #050f1e;
+            border: 1px solid #0d1e36;
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
 
-/* Total */
+        .level-box.active {
+            border: 2px solid #00bcd4;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.2);
+        }
 
-.total{
-    margin:16px;
-    padding:25px;
-    text-align:center;
-    background:#000c18;
-    border:1px solid #083344;
-    border-radius:12px;
-}
+        .lvl-title {
+            color: #4a5d78;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
 
-.total-number{
-    color:#06b6d4;
-    font-size:30px;
-    font-weight:900;
-}
+        .lvl-pct-1 { color: #ffb703; font-size: 16px; font-weight: bold; }
+        .lvl-pct-2 { color: #ffb703; font-size: 16px; font-weight: bold; }
+        .lvl-pct-3 { color: #ffb703; font-size: 16px; font-weight: bold; }
 
-.total-text{
-    color:#6b7280;
-    font-size:11px;
-}
+        .lvl-count {
+            color: #4a5d78;
+            font-size: 11px;
+            margin-top: 4px;
+        }
 
+        /* Status Information Text Area */
+        .status-message {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 14px;
+            padding: 15px;
+            margin-top: 10px;
+        }
 
-/* Levels */
+        /* Bottom Tab Interface Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            background-color: #030a16;
+            border-top: 1px solid #0d192b;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
 
-.levels{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin:16px;
-}
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #4a5d78;
+            font-size: 11px;
+            text-decoration: none;
+            cursor: pointer;
+        }
 
+        .nav-item.active {
+            color: #4ba3e3;
+        }
 
-.level{
-    background:#000c18;
-    border:1px solid #111827;
-    padding:12px;
-    border-radius:12px;
-    text-align:center;
-}
-
-
-.level.active{
-    border:2px solid #06b6d4;
-}
-
-
-.level-title{
-    font-size:10px;
-    color:#6b7280;
-}
-
-
-.rate{
-    font-size:18px;
-    color:#fbbf24;
-    font-weight:bold;
-}
-
-
-.count{
-    font-size:10px;
-    color:#9ca3af;
-}
-
-
-.member-area{
-    margin:16px;
-    padding:20px;
-    background:#00050a;
-    border-radius:12px;
-    border:1px solid #111827;
-}
-
-
-.member{
-    background:#000c18;
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:8px;
-    border:1px solid #111827;
-}
-
-
-.member-id{
-    font-weight:bold;
-}
-
-
-.member-date{
-    color:#6b7280;
-    font-size:11px;
-}
-
-
-/* Bottom */
-
-.bottom{
-    position:fixed;
-    bottom:0;
-    left:0;
-    right:0;
-    height:70px;
-    background:#000810;
-    border-top:1px solid #111827;
-    display:flex;
-    justify-content:space-around;
-    align-items:center;
-}
-
-
-.nav{
-    color:#6b7280;
-    text-decoration:none;
-    font-size:11px;
-    text-align:center;
-}
-
-
-.nav.active{
-    color:#06b6d4;
-}
-
-</style>
-
+        .nav-icon {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+    </style>
 </head>
-
 <body>
 
-
-<div class="top-nav">
-
-<div class="brand">
-<div class="logo">L</div>
-
-<div>
-<div id="phone" class="phone">
-Loading...
-</div>
-
-<div class="subtitle">
-Team Network Hub
-</div>
-
-</div>
-
-</div>
-
-
-<a href="/dashboard" class="close-btn">
-✕ Close
-</a>
-
-</div>
-
-
-<div class="card">
-
-<div class="label">
-YOUR INVITATION LINK
-</div>
-
-<div class="link-box">
-
-<input id="refLink" readonly value="Loading link...">
-
-<button onclick="copyLink()">
-COPY LINK
-</button>
-
-</div>
-
-</div>
-<!-- Total Team -->
-<div class="total">
-
-    <div class="total-number" id="totalTeam">
-        0
-    </div>
-
-    <div class="total-text">
-        TOTAL MEMBERS RECRUITED
-    </div>
-
-</div>
-
-
-<!-- Levels -->
-<div class="levels">
-
-    <div class="level active" id="level1" onclick="showLevel(1)">
-        <div class="level-title">
-            LEVEL 1
-        </div>
-        <div class="rate">
-            30%
-        </div>
-        <div class="count" id="count1">
-            0 Members
-        </div>
-    </div>
-
-
-    <div class="level" id="level2" onclick="showLevel(2)">
-        <div class="level-title">
-            LEVEL 2
-        </div>
-        <div class="rate">
-            2%
-        </div>
-        <div class="count" id="count2">
-            0 Members
-        </div>
-    </div>
-
-
-    <div class="level" id="level3" onclick="showLevel(3)">
-        <div class="level-title">
-            LEVEL 3
-        </div>
-        <div class="rate">
-            1%
-        </div>
-        <div class="count" id="count3">
-            0 Members
-        </div>
-    </div>
-
-</div>
-
-
-
-<!-- Members List -->
-
-<div class="member-area" id="members">
-
-    Loading members...
-
-</div>
-
-
-
-<!-- Bottom Navigation -->
-
-<div class="bottom">
-
-<a href="/dashboard" class="nav">
-🏠<br>
-Home
-</a>
-
-
-<a href="/team" class="nav active">
-👥<br>
-Team
-</a>
-
-
-<a href="/plan" class="nav">
-📦<br>
-Plan
-</a>
-
-
-<a href="/profile" class="nav">
-👤<br>
-Profile
-</a>
-
-</div>
-
-
-
-<script>
-
-let teamData = {};
-let currentLevel = 1;
-
-
-
-// Load team data from Flask
-
-fetch("/api/team/dashboard-data")
-
-.then(response => response.json())
-
-.then(data => {
-
-
-    teamData = data;
-
-
-    document.getElementById("phone").innerHTML =
-    data.username;
-
-
-    document.getElementById("refLink").value =
-    data.referral_link;
-
-
-    document.getElementById("totalTeam").innerHTML =
-    data.total_team;
-
-
-
-    document.getElementById("count1").innerHTML =
-    data.levels["1"].count + " Members";
-
-
-    document.getElementById("count2").innerHTML =
-    data.levels["2"].count + " Members";
-
-
-    document.getElementById("count3").innerHTML =
-    data.levels["3"].count + " Members";
-
-
-    showLevel(1);
-
-
-})
-
-.catch(error=>{
-
-    document.getElementById("members").innerHTML =
-    "Unable to load team data";
-
-});
-
-
-
-
-// Change level
-
-function showLevel(level){
-
-
-    currentLevel = level;
-
-
-    document.getElementById("level1").classList.remove("active");
-    document.getElementById("level2").classList.remove("active");
-    document.getElementById("level3").classList.remove("active");
-
-
-    document.getElementById("level"+level)
-    .classList.add("active");
-
-
-
-    let box =
-    document.getElementById("members");
-
-
-    let list =
-    teamData.levels[level].members;
-
-
-
-    if(list.length === 0){
-
-        box.innerHTML =
-        "No members in this level yet";
-
-        return;
-
-    }
-
-
-
-    let html="";
-
-
-    list.forEach(member=>{
-
-
-        html += `
-
-        <div class="member">
-
-            <div class="member-id">
-            Member ID: ${member.id}
+    <!-- Top Navigation Header -->
+    <div class="header-nav">
+        <div class="logo-group">
+            <!-- 1. Golden Star -->
+            <div class="star-badge">★</div>
+            <!-- 2. Blue Sphere Orb -->
+            <div class="blue-sphere">
+                <!-- 3. Small Blue L inside -->
+                <div class="l-shape">L</div>
             </div>
-
-            <div class="member-date">
-            Joined: ${member.date}
+            <div class="title-text">
+                <span class="main-title">Loading...</span>
+                <span class="sub-title">Team Network Hub</span>
             </div>
+        </div>
+        <button class="close-btn" onclick="window.history.back()">✕ Close</button>
+    </div>
 
+    <!-- Main Content Panel Area -->
+    <div class="dashboard-container">
+        
+        <!-- Invitation Link Block -->
+        <div class="card-panel">
+            <div class="panel-label">Your Invitation Link</div>
+            <div class="link-display-box" id="linkBox">
+                <!-- Flask inserts link here, falls back to message if missing -->
+                {{ invite_link if invite_link else 'Loading link...' }}
+            </div>
+            <button class="action-btn" onclick="copyReferralLink()">Copy Link</button>
         </div>
 
-        `;
+        <!-- Recruitment Statistics Module -->
+        <div class="card-panel">
+            <div class="counter-label" id="totalMembers">0</div>
+            <div class="counter-sub">Total Members Recruited</div>
+        </div>
 
+        <!-- Multilevel Commission Tiers Grid -->
+        <div class="level-grid">
+            <!-- Level 1 (Highlighted/Active Tier) -->
+            <div class="level-box active">
+                <div class="lvl-title">Level 1</div>
+                <div class="lvl-pct-1">30%</div>
+                <div class="lvl-count"><span id="lvl1Count">0</span> Members</div>
+            </div>
+            
+            <!-- Level 2 -->
+            <div class="level-box">
+                <div class="lvl-title">Level 2</div>
+                <div class="lvl-pct-2">2%</div>
+                <div class="lvl-count"><span id="lvl2Count">0</span> Members</div>
+            </div>
+            
+            <!-- Level 3 -->
+            <div class="level-box">
+                <div class="lvl-title">Level 3</div>
+                <div class="lvl-pct-3">1%</div>
+                <div class="lvl-count"><span id="lvl3Count">0</span> Members</div>
+            </div>
+        </div>
 
-    });
+        <!-- Real-Time Error/Status Notices -->
+        <div class="status-message" id="statusMessage">
+            Unable to load team data
+        </div>
 
+    </div>
 
-    box.innerHTML = html;
-
-
-}
-
-
-
-
-// Copy referral link
-
-function copyLink(){
-
-let input =
-document.getElementById("refLink");
-
-
-input.select();
-
-input.setSelectionRange(0,99999);
-
-
-navigator.clipboard.writeText(input.value);
-
-
-alert("Invitation link copied!");
-
-}
-
-
-</script>
-
-
-</body>
-</html>
+    <!-- Footer Mobile Navigation Bar System -->
+    <div class="bottom-nav">
+        <a href="/dashboard" class="nav-item">
+            <div class="nav-icon">🏠</div>
+            <div>Home</div>
+        </a>
+        <a href="/team" class="nav-item active">
+            <div class="nav-icon">👥</div>
+            <div>Team</div>
+        </a>
+        <a href="/plan" class="nav-item">
+            <div class="nav-icon">📦</div>
+            <div>Plan</div>
+        </a>
+        <a href="/profile" class="nav-item">
