@@ -1,353 +1,546 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Dashboard - LATEX FOAM</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        body {
-            background-color: #000407;
-            color: #ffffff;
-            min-height: 100vh;
-            padding-bottom: 100px; /* Safe breathing room padding above the fixed footer bar */
-        }
+<title>Team Dashboard - LATEX FOAM</title>
 
-        /* Top Header Navigation style */
-        .top-nav {
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #111827;
-            background-color: #000810;
-        }
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:Segoe UI,Tahoma,sans-serif;
+}
 
-        .brand-section {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+body{
+    background:#000407;
+    color:white;
+    min-height:100vh;
+    padding-bottom:90px;
+}
 
-        .logo-l {
-            color: #22d3ee;
-            font-weight: 900;
-            font-size: 24px;
-            font-style: italic;
-        }
+/* Header */
+.top-nav{
+    padding:16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#000810;
+    border-bottom:1px solid #111827;
+}
 
-        .user-phone {
-            font-weight: 700;
-            font-size: 14px;
-            letter-spacing: 0.5px;
-            color: #e5e7eb;
-        }
+.brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
 
-        .hub-title {
-            font-size: 10px;
-            color: #22d3ee;
-            font-weight: 500;
-        }
+.logo{
+    color:#22d3ee;
+    font-size:28px;
+    font-weight:900;
+    font-style:italic;
+}
 
-        .close-btn {
-            font-size: 12px;
-            background-color: #111827;
-            border: 1px solid #1f2937;
-            border-radius: 8px;
-            padding: 6px 12px;
-            color: #9ca3af;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
+.phone{
+    font-size:14px;
+    font-weight:700;
+}
 
-        /* Referral Link Top Styling Card Box */
-        .card-box {
-            margin: 16px;
-            background-color: #000c18;
-            border: 1px solid #083344;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-        }
+.subtitle{
+    color:#22d3ee;
+    font-size:10px;
+}
 
-        .input-label {
-            display: block;
-            font-size: 10px;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #06b6d4;
-            margin-bottom: 8px;
-        }
+.close-btn{
+    text-decoration:none;
+    color:#9ca3af;
+    background:#111827;
+    padding:7px 12px;
+    border-radius:8px;
+}
 
-        .link-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background-color: #000408;
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid #111827;
-        }
 
-        /* Input field selection engine box configuration values */
-        .link-input-field {
-            background-color: #000000;
-            border: 1px solid #1f2937;
-            color: #22d3ee;
-            font-size: 13px;
-            padding: 10px;
-            border-radius: 6px;
-            width: 100%;
-            outline: none;
-            font-family: monospace;
-            text-align: center;
-            font-weight: bold;
-        }
+/* Cards */
 
-        .copy-button {
-            background-color: #0891b2;
-            color: #ffffff;
-            font-weight: 700;
-            font-size: 13px;
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+.card{
+    margin:16px;
+    padding:16px;
+    background:#000c18;
+    border:1px solid #083344;
+    border-radius:12px;
+}
 
-        /* Total Score Big Banner Block */
-        .total-banner {
-            margin: 0 16px 16px 16px;
-            background: linear-gradient(to bottom, #001020, #00060c);
-            border: 1px solid #083344;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
 
-        .glow-circle {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            border: 1px solid rgba(6, 182, 212, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 12px auto;
-            box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
-        }
+.label{
+    color:#06b6d4;
+    font-size:11px;
+    font-weight:bold;
+    margin-bottom:8px;
+}
 
-        .total-number {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #06b6d4;
-        }
 
-        .total-label {
-            font-size: 11px;
-            color: #6b7280;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
-        }
+.link-box{
+    background:#000;
+    border:1px solid #1f2937;
+    padding:12px;
+    border-radius:8px;
+}
 
-        /* Level Selector Cards Navigation row Grid */
-        .levels-grid {
-            display: grid;
-            grid-template-cols: repeat(3, 1fr);
-            gap: 10px;
-            margin: 0 16px 20px 16px;
-        }
 
-        .level-card {
-            background-color: #000c18;
-            border: 1px solid #111827;
-            border-radius: 12px;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+input{
+    width:100%;
+    background:#000;
+    color:#22d3ee;
+    border:1px solid #1f2937;
+    padding:10px;
+    border-radius:6px;
+    text-align:center;
+    font-family:monospace;
+}
 
-        .level-card.active {
-            background-color: #001020;
-            border: 2px solid #06b6d4;
-            transform: scale(1.03);
-            box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
-        }
 
-        .level-title {
-            font-size: 10px;
-            color: #6b7280;
-            font-weight: 700;
-            display: block;
-            margin-bottom: 4px;
-        }
+button{
+    width:100%;
+    margin-top:10px;
+    padding:11px;
+    background:#0891b2;
+    color:white;
+    border:0;
+    border-radius:7px;
+    font-weight:bold;
+}
 
-        .level-card.active .level-title {
-            color: #06b6d4;
-        }
 
-        .level-rate {
-            font-size: 18px;
-            font-weight: 900;
-            color: #9ca3af;
-        }
+/* Total */
 
-        .level-card.active .level-rate {
-            color: #fbbf24;
-        }
+.total{
+    margin:16px;
+    padding:25px;
+    text-align:center;
+    background:#000c18;
+    border:1px solid #083344;
+    border-radius:12px;
+}
 
-        .level-members-count {
-            font-size: 9px;
-            color: #4b5563;
-            margin-top: 4px;
-            font-weight: 500;
-        }
+.total-number{
+    color:#06b6d4;
+    font-size:30px;
+    font-weight:900;
+}
 
-        /* Dynamic Member Items Output wrapper container box list */
-        .roster-area {
-            margin: 0 16px;
-            text-align: center;
-            font-size: 12px;
-            color: #4b5563;
-            font-weight: 500;
-            padding: 40px 16px;
-            background-color: #00050a;
-            border-radius: 12px;
-            border: 1px solid rgba(17, 24, 39, 0.6);
-        }
+.total-text{
+    color:#6b7280;
+    font-size:11px;
+}
 
-        .member-row {
-            background-color: #000c18;
-            border: 1px solid #111827;
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            text-align: left;
-        }
 
-        .member-id {
-            font-size: 14px;
-            font-weight: 700;
-            color: #e5e7eb;
-            letter-spacing: 0.5px;
-        }
+/* Levels */
 
-        .member-date {
-            font-size: 10px;
-            color: #4b5563;
-            margin-top: 4px;
-        }
+.levels{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin:16px;
+}
 
-        .member-badge {
-            background-color: rgba(8, 145, 178, 0.1);
-            color: #06b6d4;
-            border: 1px solid rgba(6, 182, 212, 0.2);
-            border-radius: 4px;
-            padding: 2px 10px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
 
-        /* Persistent Lower App Navigation Dock Styles */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: #000810;
-            border-top: 1px solid #111827;
-            height: 75px;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            padding: 0 8px 12px 8px;
-            z-index: 100;
-        }
+.level{
+    background:#000c18;
+    border:1px solid #111827;
+    padding:12px;
+    border-radius:12px;
+    text-align:center;
+}
 
-        .nav-link {
-            text-align: center;
-            color: #6b7280;
-            font-size: 10px;
-            font-weight: 500;
-            text-decoration: none;
-            display: block;
-            flex: 1;
-        }
 
-        .nav-link.active {
-            color: #06b6d4 !important;
-            font-weight: 700 !important;
-        }
+.level.active{
+    border:2px solid #06b6d4;
+}
 
-        .nav-icon {
-            font-size: 18px;
-            margin-bottom: 2px;
-            text-align: center;
-        }
-        
-        .nav-text {
-            font-size: 10px;
-        }
-    </style>
+
+.level-title{
+    font-size:10px;
+    color:#6b7280;
+}
+
+
+.rate{
+    font-size:18px;
+    color:#fbbf24;
+    font-weight:bold;
+}
+
+
+.count{
+    font-size:10px;
+    color:#9ca3af;
+}
+
+
+.member-area{
+    margin:16px;
+    padding:20px;
+    background:#00050a;
+    border-radius:12px;
+    border:1px solid #111827;
+}
+
+
+.member{
+    background:#000c18;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:8px;
+    border:1px solid #111827;
+}
+
+
+.member-id{
+    font-weight:bold;
+}
+
+
+.member-date{
+    color:#6b7280;
+    font-size:11px;
+}
+
+
+/* Bottom */
+
+.bottom{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:70px;
+    background:#000810;
+    border-top:1px solid #111827;
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+}
+
+
+.nav{
+    color:#6b7280;
+    text-decoration:none;
+    font-size:11px;
+    text-align:center;
+}
+
+
+.nav.active{
+    color:#06b6d4;
+}
+
+</style>
+
 </head>
+
 <body>
 
-    <!-- Header Section -->
-    <div class="top-nav">
-        <div class="brand-section">
-            <span class="logo-l">L</span>
-            <div>
-                <div id="userPhoneDisplay" class="user-phone">Loading Account...</div>
-                <div class="hub-title">Team Network Hub</div>
+
+<div class="top-nav">
+
+<div class="brand">
+<div class="logo">L</div>
+
+<div>
+<div id="phone" class="phone">
+Loading...
+</div>
+
+<div class="subtitle">
+Team Network Hub
+</div>
+
+</div>
+
+</div>
+
+
+<a href="/dashboard" class="close-btn">
+✕ Close
+</a>
+
+</div>
+
+
+<div class="card">
+
+<div class="label">
+YOUR INVITATION LINK
+</div>
+
+<div class="link-box">
+
+<input id="refLink" readonly value="Loading link...">
+
+<button onclick="copyLink()">
+COPY LINK
+</button>
+
+</div>
+
+</div>
+<!-- Total Team -->
+<div class="total">
+
+    <div class="total-number" id="totalTeam">
+        0
+    </div>
+
+    <div class="total-text">
+        TOTAL MEMBERS RECRUITED
+    </div>
+
+</div>
+
+
+<!-- Levels -->
+<div class="levels">
+
+    <div class="level active" id="level1" onclick="showLevel(1)">
+        <div class="level-title">
+            LEVEL 1
+        </div>
+        <div class="rate">
+            30%
+        </div>
+        <div class="count" id="count1">
+            0 Members
+        </div>
+    </div>
+
+
+    <div class="level" id="level2" onclick="showLevel(2)">
+        <div class="level-title">
+            LEVEL 2
+        </div>
+        <div class="rate">
+            2%
+        </div>
+        <div class="count" id="count2">
+            0 Members
+        </div>
+    </div>
+
+
+    <div class="level" id="level3" onclick="showLevel(3)">
+        <div class="level-title">
+            LEVEL 3
+        </div>
+        <div class="rate">
+            1%
+        </div>
+        <div class="count" id="count3">
+            0 Members
+        </div>
+    </div>
+
+</div>
+
+
+
+<!-- Members List -->
+
+<div class="member-area" id="members">
+
+    Loading members...
+
+</div>
+
+
+
+<!-- Bottom Navigation -->
+
+<div class="bottom">
+
+<a href="/dashboard" class="nav">
+🏠<br>
+Home
+</a>
+
+
+<a href="/team" class="nav active">
+👥<br>
+Team
+</a>
+
+
+<a href="/plan" class="nav">
+📦<br>
+Plan
+</a>
+
+
+<a href="/profile" class="nav">
+👤<br>
+Profile
+</a>
+
+</div>
+
+
+
+<script>
+
+let teamData = {};
+let currentLevel = 1;
+
+
+
+// Load team data from Flask
+
+fetch("/api/team/dashboard-data")
+
+.then(response => response.json())
+
+.then(data => {
+
+
+    teamData = data;
+
+
+    document.getElementById("phone").innerHTML =
+    data.username;
+
+
+    document.getElementById("refLink").value =
+    data.referral_link;
+
+
+    document.getElementById("totalTeam").innerHTML =
+    data.total_team;
+
+
+
+    document.getElementById("count1").innerHTML =
+    data.levels["1"].count + " Members";
+
+
+    document.getElementById("count2").innerHTML =
+    data.levels["2"].count + " Members";
+
+
+    document.getElementById("count3").innerHTML =
+    data.levels["3"].count + " Members";
+
+
+    showLevel(1);
+
+
+})
+
+.catch(error=>{
+
+    document.getElementById("members").innerHTML =
+    "Unable to load team data";
+
+});
+
+
+
+
+// Change level
+
+function showLevel(level){
+
+
+    currentLevel = level;
+
+
+    document.getElementById("level1").classList.remove("active");
+    document.getElementById("level2").classList.remove("active");
+    document.getElementById("level3").classList.remove("active");
+
+
+    document.getElementById("level"+level)
+    .classList.add("active");
+
+
+
+    let box =
+    document.getElementById("members");
+
+
+    let list =
+    teamData.levels[level].members;
+
+
+
+    if(list.length === 0){
+
+        box.innerHTML =
+        "No members in this level yet";
+
+        return;
+
+    }
+
+
+
+    let html="";
+
+
+    list.forEach(member=>{
+
+
+        html += `
+
+        <div class="member">
+
+            <div class="member-id">
+            Member ID: ${member.id}
             </div>
-        </div>
-        <a href="/dashboard" class="close-btn">✕ Close</a>
-    </div>
 
-    <!-- Referral Link Display Card Box Module -->
-    <div class="card-box">
-        <label class="input-label">Your Invitation Link</label>
-        <div class="link-container">
-            <!-- Clicking or tapping this text box triggers an absolute fallback character highlights -->
-            <input type="text" id="refLinkInput" readonly onclick="this.select(); this.setSelectionRange(0, 99999);" value="Loading unique link..." class="link-input-field">
-            <button onclick="copyReferralLink()" id="copyBtn" class="copy-button">Press & Copy Link</button>
-        </div>
-    </div>
+            <div class="member-date">
+            Joined: ${member.date}
+            </div>
 
-    <!-- Total Count Banner -->
-    <div class="total-banner">
-        <div class="glow-circle">
-            <span class="logo-l" style="font-size:20px;">L</span>
         </div>
-        <div id="totalTeamText" class="total-number">0</div>
-        <div class="total-label">Total Members Recruited</div>
-    </div>
 
-    <!-- Level Cards Grid Row -->
-    <div class="levels-grid">
-        <div onclick="switchLevel(1)" id="cardLvl1" class="level-card active">
-            <span class="level-title">LEVEL 1</span>
-            <div class="level-rate">30%</div>
-            <div id="countLvl1" class="level-members-count">0 Members</div>
-        </div>
-        <div onclick="switchLevel(2)" id="cardLvl2" class="level-card">
+        `;
+
+
+    });
+
+
+    box.innerHTML = html;
+
+
+}
+
+
+
+
+// Copy referral link
+
+function copyLink(){
+
+let input =
+document.getElementById("refLink");
+
+
+input.select();
+
+input.setSelectionRange(0,99999);
+
+
+navigator.clipboard.writeText(input.value);
+
+
+alert("Invitation link copied!");
+
+}
+
+
+</script>
+
+
+</body>
+</html>
