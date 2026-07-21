@@ -315,12 +315,12 @@
         <a href="/dashboard" class="close-btn">✕ Close</a>
     </div>
 
-    <!-- Referral Link Display -->
+    <!-- Updated Referral Link Display Card Box Module -->
     <div class="card-box">
         <label class="input-label">Your Invitation Link</label>
         <div class="link-container">
-            <input type="text" id="refLinkInput" readonly value="https://onrender.com..." class="link-input">
-            <button onclick="copyReferralLink()" id="copyBtn" class="copy-button">Copy Link</button>
+            <input type="text" id="refLinkInput" onclick="this.select();" value="https://onrender.com..." class="link-input">
+            <button onclick="copyReferralLink()" id="copyBtn" class="copy-button">Select Link</button>
         </div>
     </div>
 
@@ -352,4 +352,3 @@
         </div>
     </div>
 
-    <!-- List Records Container Block Area -->
