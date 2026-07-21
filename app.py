@@ -175,14 +175,26 @@ def register():
     return render_template('register.html', url_invite_code=url_invite_code)
 @app.route('/team')
 def team_page_view():
-    if not session.get('user_id'):
+    user_id = session.get('user_id')
+    if not user_id:
         return "Unauthorized. Please log in first.", 401
-    return render_template('team_dashboard.html')
+        
+    # Automatically generate the individual's UNIQUE invitation link
+    base_url = "https://onrender.com"  # ← Change this to your live Render URL
+    unique_referral_link = f"{base_url}/register?ref={user_id}"
+    
+    return render_template('team_dashboard.html', invite_link=unique_referral_link)
+
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
+
+    user_phone = session.get('user_phone', '0204216188') 
+    
+    # Return your dashboard data as JSON here
+    return jsonify({"user_phone": user_phone})
 
     # 1. Fetch logged-in user identifier metadata safely from active sessions
     user_phone = session.get('user_phone', '0204216188') 
