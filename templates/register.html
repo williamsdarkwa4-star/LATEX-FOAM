@@ -151,7 +151,9 @@
         {% endwith %}
 
         <!-- Security Form Structure Processing Layer -->
-        <form action="{{ url_for('register') }}" method="POST">
+        <!-- Ensure the action path matches your Python route exactly -->
+<form action="/register" method="POST">
+
             
             <div class="form-group">
                 <label>Phone Number</label>
