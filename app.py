@@ -38,18 +38,56 @@ def init_db():
         return
         
     cursor = conn.cursor()
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    phone TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    withdraw_password TEXT NOT NULL,
+    referral_code TEXT UNIQUE NOT NULL,
+    referred_by TEXT,
+    balance NUMERIC DEFAULT 30.0
+)
+''')
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS referral_network (
+    id SERIAL PRIMARY KEY,
+    referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    level INTEGER NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+''')
+# Add referral columns safely for existing users
+try:
+    cursor.execute("""
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE
+    """)
     
-    # 1. Users Table
+    cursor.execute("""
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS referred_by TEXT
+    """)
+    
+    conn.commit()
+
+except Exception as e:
+    conn.rollback()
+    print("Referral columns update:", e)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            phone TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            withdraw_password TEXT NOT NULL,
-            invite_code TEXT,
-            balance NUMERIC DEFAULT 30.0
-        )
-    ''')
+CREATE TABLE IF NOT EXISTS referral_network (
+    id SERIAL PRIMARY KEY,
+    referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    level INTEGER NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+''')
+
+conn.commit()
+
+
     
     # 2. Deposits Table (Kept as is, records status modifications automatically)
     cursor.execute('''
