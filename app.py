@@ -98,8 +98,10 @@ def init_db():
     print("All PostgreSQL tracking schemas initialised successfully.")
 from werkzeug.security import generate_password_hash, check_password_hash
 
-@app.route('/register', methods=['POST'])
-def process_registration():
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    # Your registration code logic goes here...
+
     phone = request.form.get('phone', '').strip()
     login_pass = request.form.get('password', '').strip()
     withdraw_pass = request.form.get('withdrawal_password', '').strip()
