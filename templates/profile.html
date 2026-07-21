@@ -1,190 +1,99 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Profile</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <title>Profile Settings</title>
     <style>
-        *{
-            margin:0;
-            padding:0;
-            box-sizing:border-box;
-            font-family:Arial,sans-serif;
-        }
-
-        body{
-            background:#000;
-            color:white;
-            min-height:100vh;
-            padding:20px;
-        }
-
-        .container{
-            width:100%;
-            max-width:500px;
-            margin:auto;
-        }
-
-        h2{
-            text-align:center;
-            font-size:32px;
-            margin:20px 0 10px;
-        }
-
-        .company{
-            text-align:center;
-            color:#00d9ff;
-            font-size:24px;
-            font-weight:bold;
-            letter-spacing:2px;
-            margin-bottom:35px;
-        }
-
-        .logo{
-            width:130px;
-            height:130px;
-            margin:auto;
-            border-radius:50%;
-            background:radial-gradient(circle,#0b4c50,#001010);
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            box-shadow:0 0 30px #008b8b;
-            margin-bottom:40px;
-        }
-
-        .logo span{
-            font-size:60px;
-            color:#ffd54a;
-            font-weight:bold;
-        }
-
-        .card{
-            background:#031012;
-            border:1px solid #12383d;
-            border-radius:18px;
-            padding:20px;
-            margin-bottom:20px;
-        }
-
-        .card p{
-            color:#aaa;
-            margin-bottom:8px;
-            font-size:15px;
-        }
-
-        .card h3{
-            font-size:22px;
-        }
-
-        .balance{
-            color:#00d9ff;
-        }
-
-        .buttons{
-            display:flex;
-            gap:15px;
-            margin-top:20px;
-        }
-
-        .btn{
-            flex:1;
-            text-align:center;
-            padding:14px;
-            background:#12383d;
-            border:1px solid #08bddb;
-            border-radius:25px;
-            color:white;
-            text-decoration:none;
-            font-weight:bold;
-        }
-
-        .btn:hover{
-            background:#08bddb;
-            color:black;
-        }
-
-        .logout{
-            display:block;
-            text-align:center;
-            background:#ff4d4d;
-            color:white;
-            padding:18px;
-            border-radius:35px;
-            text-decoration:none;
-            font-weight:bold;
-            margin-top:25px;
-        }
-
-        .footer{
-            text-align:center;
-            color:#aaa;
-            margin-top:30px;
-            font-size:14px;
-        }
-
-        .footer span{
-            color:#00cbe8;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: #020710; color: #ffffff; padding: 20px; }
+        .container { max-width: 480px; margin: 0 auto; width: 100%; }
+        
+        .card-panel { background-color: #050f1e; border: 1px solid #0d1e36; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .label { color: #00bcd4; font-size: 11px; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; letter-spacing: 0.5px; }
+        .value { font-size: 20px; font-weight: bold; margin-bottom: 16px; color: #ffffff; }
+        .money { color: #ffb703; font-size: 26px; }
+        
+        .input-box { display: flex; flex-direction: column; margin-bottom: 18px; }
+        input { background-color: #020710; border: 1px solid #0d1e36; padding: 12px; border-radius: 8px; color: white; font-size: 14px; margin-top: 6px; }
+        input:focus { border-color: #00bcd4; outline: none; }
+        
+        .action-btn { width: 100%; background-color: #118ab2; color: white; border: none; padding: 13px; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 5px; }
+        .action-btn.secondary { background-color: #00bcd4; color: #020710; }
     </style>
 </head>
-
 <body>
 
-<div class="container">
-
-    <h2>My Profile</h2>
-
-    <div class="company">
-        LATEX FOAM
-    </div>
-
-
-    <div class="logo">
-        <span>L</span>
-    </div>
-
-
-    <div class="card">
-        <p>Account Number</p>
-        <h3>{{ account_number }}</h3>
-    </div>
-
-
-    <div class="card">
-        <p>Phone Number</p>
-        <h3>{{ user_phone }}</h3>
-    </div>
-
-
-    <div class="card">
-
-        <p>Balance</p>
-
-        <h3 class="">
-            {{ "%.2f"|format(user_balance) }} GHS
-        </h3>
-
-
-        <div class="buttons">
-
-        
-
-            <a href="{{ url_for('withdraw') }}" class="btn">
-                Withdraw
-            </a>
-
+    <div class="container">
+        <!-- Balance and Wallet Information Grid -->
+        <div class="card-panel">
+            <div class="label">User Account Number</div>
+            <div class="value" id="accNumber">Loading...</div>
+            
+            <div class="label">Current Available Balance</div>
+            <div class="value money" id="accBalance">$0.00</div>
         </div>
 
+        <!-- Changing Login Code -->
+        <div class="card-panel">
+            <div class="label" style="color:#118ab2;">Account Security</div>
+            <h4 style="margin: 5px 0 15px 0;">Change Login Password</h4>
+            <div class="input-box">
+                <input type="password" id="loginPassInput" placeholder="Enter new login password">
+            </div>
+            <button class="action-btn" onclick="submitSecurityUpdate('login', 'loginPassInput')">Update Login Password</button>
+        </div>
+
+        <!-- Changing Transaction Security Code -->
+        <div class="card-panel">
+            <div class="label" style="color:#00bcd4;">Funds Protection</div>
+            <h4 style="margin: 5px 0 15px 0;">Change Withdrawal Password</h4>
+            <div class="input-box">
+                <input type="password" id="withdrawPassInput" placeholder="Enter new withdrawal password">
+            </div>
+            <button class="action-btn secondary" onclick="submitSecurityUpdate('withdrawal', 'withdrawPassInput')">Update Withdrawal Password</button>
+        </div>
     </div>
 
+    <script>
+        // Load initial balance stats automatically
+        window.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/user/account-overview')
+                .then(res => res.json())
+                .then(data => {
+                    if(!data.error) {
+                        document.getElementById('accNumber').innerText = data.account_number;
+                        document.getElementById('accBalance').innerText = "$" + data.balance.toFixed(2);
+                    }
+                });
+        });
 
-    <a href="{{ url_for('logout') }}" class="logout">
-        Logout
-    </a>
+        // Modular handling for payload submissions
+        function submitSecurityUpdate(targetType, inputElementId) {
+            const inputField = document.getElementById(inputElementId);
+            const passwordValue = inputField.value.trim();
+            
+            if(passwordValue.length < 6) {
+                alert("The password field requires at least 6 characters.");
+                return;
+            }
 
-
-    <div class="footer">
-        Agree with us
-       
+            fetch('/api/user/update-security', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: targetType, value: passwordValue })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    alert(data.success);
+                    inputField.value = ""; // Flush memory state safely
+                } else {
+                    alert(data.error || "Update operation encountered an issue.");
+                }
+            })
+            .catch(err => alert("Communication error with server infrastructure."));
+        }
+    </script>
+</body>
+</html>
