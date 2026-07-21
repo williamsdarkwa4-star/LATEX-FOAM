@@ -237,58 +237,85 @@ def team_page_view():
         return "Unauthorized. Please log in first.", 401
     return render_template('team_dashboard.html')
 
-
-@app.route('/api/team/dashboard-data')
+@app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
+
     if not session.get('user_id'):
         return jsonify({"error": "Unauthorized"}), 401
 
     user_id = session['user_id']
 
     conn = get_db_connection()
+
+    if conn is None:
+        return jsonify({"error": "Database unavailable"}), 500
+
     cursor = conn.cursor()
 
-    # Get user's referral code
+    # Get user phone and referral code
     cursor.execute(
         "SELECT phone, referral_code FROM users WHERE id=%s",
         (user_id,)
     )
+
     user = cursor.fetchone()
 
-    referral_link = f"https://LATEX_FOAM-SITE.onrender.com/register?ref={user['referral_code']}"
+    if not user:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+
+    referral_link = f"https://latex-foam-site.onrender.com/register?ref={user['referral_code']}"
 
     levels = {
-        "1": {"count": 0, "members": []},
-        "2": {"count": 0, "members": []},
-        "3": {"count": 0, "members": []}
+        "1": {"count":0, "members":[]},
+        "2": {"count":0, "members":[]},
+        "3": {"count":0, "members":[]}
     }
 
+
+    # Get referral network
     cursor.execute("""
         SELECT referred_id, level, joined_at
         FROM referral_network
         WHERE referrer_id=%s
         ORDER BY joined_at DESC
-    """, (user_id,))
+    """,
+    (user_id,))
+
 
     members = cursor.fetchall()
 
-    for m in members:
-        level = str(m['level'])
+
+    for member in members:
+
+        level = str(member['level'])
+
         if level in levels:
+
             levels[level]["count"] += 1
+
             levels[level]["members"].append({
-                "id": m['referred_id'],
-                "date": str(m['joined_at'])
+                "id": member['referred_id'],
+                "date": str(member['joined_at'])
             })
+
 
     cursor.close()
     conn.close()
 
+
     return jsonify({
+
         "username": user['phone'],
+
         "referral_link": referral_link,
+
         "total_team": len(members),
+
         "levels": levels
+
     })
 
 
