@@ -192,14 +192,14 @@
         {% endwith %}
 
         <form action="{{ url_for('deposit') }}" method="POST" enctype="multipart/form-data">
-            <div class="limit-info">Recharge limit range: 100.00 ~ 9999999.00</div>
+            <div class="limit-info">Recharge limit range: 50.00 ~ 9999999.00</div>
 
             <div class="quick-grid">
-                <div class="quick-btn" onclick="setAmount(100)">100</div>
-                <div class="quick-btn" onclick="setAmount(200)">200</div>
-                <div class="quick-btn" onclick="setAmount(500)">500</div>
+                <div class="quick-btn" onclick="setAmount(50)">50</div>
+                <div class="quick-btn" onclick="setAmount(150)">150</div>
+                <div class="quick-btn" onclick="setAmount(300)">300</div>
+                <div class="quick-btn" onclick="setAmount(600)">600</div>
                 <div class="quick-btn" onclick="setAmount(1000)">1,000</div>
-                <div class="quick-btn" onclick="setAmount(3000)">3,000</div>
                 <div class="quick-btn" onclick="setAmount(5000)">5,000</div>
             </div>
 
@@ -220,7 +220,7 @@
 
             <div class="instruction-card">
                 <h4>Recharge request</h4>
-                <p>Minimum deposit is GHS 100<br>
+                <p>Minimum deposit is GHS 50<br>
                    Deposit arrives between 0-3 minutes<br>
                    Failure to receive your deposit within 3 minutes, kindly contact customer service for assistance.</p>
             </div>
