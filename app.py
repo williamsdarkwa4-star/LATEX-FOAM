@@ -255,40 +255,54 @@ def get_team_dashboard_data():
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # 1. Handle form submissions (POST)
     if request.method == 'POST':
-        phone = request.form.get('phone')
-        password = request.form.get('password')
-        
+        phone = request.form.get('phone', '').strip()
+        password = request.form.get('password', '').strip()
+
+        if not phone or not password:
+            flash('Please fill in all fields!', 'error')
+            return redirect(url_for('login'))
+
         conn = get_db_connection()
         if conn is None:
-            flash('Database engine offline locally.', 'error')
+            flash('Database engine offline.', 'error')
             return redirect(url_for('login'))
-            
-        cursor = conn.cursor()
-        cursor = conn.cursor()
-        
-        # 1. Query the user by phone number ONLY
-        cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s', (phone,))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        
-        # 2. Check if a user was found and then compare the hashed password safely
-        if user:
-            # Handle both dictionary cursor and standard tuple cursor formats automatically
-            db_password = user['password'] if isinstance(user, dict) else user[2]
-            db_id = user['id'] if isinstance(user, dict) else user[0]
-            db_phone = user['phone'] if isinstance(user, dict) else user[1]
-            
-            # Verify the hashed password against plain text
-            if check_password_hash(db_password, password):
-                session['user_id'] = db_id
-                session['phone'] = db_phone
-                return redirect(url_for('dashboard'))
-            
-        # 3. Fallback if user doesn't exist OR password verification fails
-        flash('Invalid phone number or password!', 'error')
-        return redirect(url_for('login'))
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s', (phone,))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+
+            if user:
+                # Handle both tuple or dictionary cursor types safely
+                if isinstance(user, dict):
+                    db_id = user.get('id')
+                    db_phone = user.get('phone')
+                    db_password = user.get('password')
+                else:
+                    db_id = user[0]
+                    db_phone = user[1]
+                    db_password = user[2]
+
+                # Check secure hash match
+                if db_password and check_password_hash(db_password, password):
+                    session['user_id'] = db_id
+                    session['phone'] = db_phone
+                    return redirect(url_for('dashboard'))
+
+            flash('Invalid phone number or password!', 'error')
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            print(f"DATABASE LOGIN ERROR: {e}")
+            flash('An error occurred during login. Please try again.', 'error')
+            return redirect(url_for('login'))
+
+    # 2. Handle page views (GET) - THIS FIXES THE CRASH
+    return render_template('login.html')
 
 
 
