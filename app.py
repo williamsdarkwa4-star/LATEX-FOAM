@@ -160,7 +160,8 @@ def register():
             conn.commit()
             cursor.close()
             conn.close()
-            flash('Registration successful! Please login.', 'success')
+            
+                        flash('Registration successful! Please login.', 'success')
             return redirect(url_for('login'))
             
         except Exception as e:
@@ -168,9 +169,18 @@ def register():
                 conn.rollback()  # Rolls back failed transaction modifications safely
                 cursor.close()
                 conn.close()
-            flash('This phone number is already registered!', 'error')
+            
+            # PRINT the actual error to your Render log console so we can see it
+            print(f"CRITICAL REGISTRATION ERROR: {e}")
+            
+            # Show a generic system error to the user instead of lying about the phone number
+            flash(f'Registration system error: {str(e)}', 'error')
             return redirect(url_for('register'))
             
+    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
+    url_invite_code = request.args.get('ref', '')
+    return render_template('register.html', url_invite_code=url_invite_code)
+
     # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
     url_invite_code = request.args.get('ref', '')
     return render_template('register.html', url_invite_code=url_invite_code)
