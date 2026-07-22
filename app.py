@@ -101,6 +101,22 @@ def init_db():
     print("All PostgreSQL tracking schemas initialised successfully.")
 # Change your top imports line to match this:
 from werkzeug.security import generate_password_hash, check_password_hash
+-- Tracks active financial plan purchases per user account
+CREATE TABLE IF NOT EXISTS user_plan (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    amount NUMERIC(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tracks transaction logs for the financial ledger display pipeline
+CREATE TABLE IF NOT EXISTS user_investments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    amount NUMERIC(10, 2) DEFAULT 0.00,
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -298,7 +314,7 @@ def get_team_dashboard_data():
         ''', (user_id,))
         count_rows = cursor.fetchall()
         
-        # 2. Fetch investment sums grouped cleanly by referral level
+        # 2. Fetch investment sums checking table relations safely
         cursor.execute('''
             SELECT rn.level, COALESCE(SUM(p.amount), 0)
             FROM referral_network rn
@@ -311,11 +327,11 @@ def get_team_dashboard_data():
         cursor.close()
         conn.close()
 
-        # Initialize safe baseline data storage dictionaries
+        # Initialize baseline fallback storage dictionaries
         counts = {1: 0, 2: 0, 3: 0}
         plans = {1: 0.00, 2: 0.00, 3: 0.00}
 
-        # Safely extract rows handling both dictionary cursors and positional tuples
+        # Safely extract values explicitly mapping positional row index components
         for row in count_rows:
             lvl = int(row['level'] if isinstance(row, dict) else row[0])
             val = int(row['count'] if isinstance(row, dict) else row[1])
@@ -324,15 +340,15 @@ def get_team_dashboard_data():
 
         for row in plan_rows:
             lvl = int(row['level'] if isinstance(row, dict) else row[0])
-            val = float(row['level_plan'] if isinstance(row, dict) else row[1])
+            val = float(row['coalesce'] if isinstance(row, dict) else row[1])
             if lvl in plans:
                 plans[lvl] = val
 
-        # Calculate combined network metrics
+        # Calculate combined network dimensions
         total_members = counts[1] + counts[2] + counts[3]
         total_team_plan = plans[1] + plans[2] + plans[3]
 
-        # 3. Return the clean, complete JSON payload to the front-end browser template
+        # 3. Return the absolute clean payload directly back to your HTML elements
         return jsonify({
             "total_members": total_members,
             "total_plan": round(total_team_plan, 2),
@@ -343,6 +359,21 @@ def get_team_dashboard_data():
             "lvl3_count": counts[3],
             "lvl3_plan": round(plans[3], 2)
         }), 200
+
+    except Exception as e:
+        print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
+        # Baseline zeros keep the screen active instead of freezing on errors
+        return jsonify({
+            "total_members": 0,
+            "total_plan": 0.00,
+            "lvl1_count": 0,
+            "lvl1_plan": 0.00,
+            "lvl2_count": 0,
+            "lvl2_plan": 0.00,
+            "lvl3_count": 0,
+            "lvl3_plan": 0.00
+        }), 200
+
 
     except Exception as e:
         print(f"DATABASE TRANSMISSION ERROR: {e}")
@@ -891,7 +922,7 @@ def activate_investment_plan():
 
 
 @app.route('/api/team/investment-ledger', methods=['GET'])
-def get_team_investment_ledger():
+def get_investment_ledger():
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -902,34 +933,19 @@ def get_team_investment_ledger():
 
     try:
         cursor = conn.cursor()
-        # Query traces downlines, pulling their phone digits, plan amount, and tier level positions
+        # Query matching the newly established database scheme parameters
         cursor.execute('''
-            SELECT u.phone, p.amount, rn.level, p.activated_at
+            SELECT rn.level, p.amount, p.created_at
             FROM referral_network rn
             JOIN user_investments p ON rn.referred_id = p.user_id
-            JOIN users u ON rn.referred_id = u.id
             WHERE rn.referrer_id = %s
-            ORDER BY p.activated_at DESC
+            ORDER BY p.created_at DESC
         ''', (user_id,))
-        ledger_rows = cursor.fetchall()
+        records = cursor.fetchall()
         cursor.close()
         conn.close()
-
-        parsed_ledger = []
-        for row in ledger_rows:
-            # Mask phone numbers for structural privacy (e.g., 0204***188)
-            raw_phone = str(row[0])
-            masked_phone = raw_phone[:4] + "***" + raw_phone[-3:] if len(raw_phone) >= 7 else raw_phone
-            
-            parsed_ledger.append({
-                "phone": masked_phone,
-                "amount": float(row[1]),
-                "level": row[2],
-                "date": row[3].strftime('%Y-%m-%d %H:%M') if row[3] else "Recent"
-            })
-
-        return jsonify({"ledger": parsed_ledger}), 200
-
+        
+        return jsonify({"ledger": records}), 200
     except Exception as e:
         print(f"LEDGER PIPELINE ERROR: {e}")
         return jsonify({"ledger": []}), 200
