@@ -162,9 +162,18 @@ def register():
                # ====================================================================
             # FIXED REGISTER COMMISSION ROUTER (STOPS SELF-PAYING BUG)
             # ====================================================================
-            if invite_code and new_user_id:
-                # 1. Look up the person who owns this invite code
-                cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
+            # Extract the hidden field value passed from the link
+invite_code = request.form.get('invite_code', '').strip() 
+
+# Inside your register function's database block, append this downline verification logger:
+if invite_code and new_user_id:
+    cursor.execute('SELECT id FROM users WHERE id = %s', (invite_code,))
+    referrer = cursor.fetchone()
+    if referrer:
+        parent_id = referrer['id'] if isinstance(referrer, dict) else referrer[0]
+        # Log them into your network hierarchy instantly
+        cursor.execute('INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)', (parent_id, new_user_id))
+
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
@@ -280,57 +289,64 @@ def get_team_dashboard_data():
     try:
         cursor = conn.cursor()
         
-        # COMBINED QUERY: Get headcount and investment totals grouped cleanly by level
+        # 1. Fetch user counts grouped cleanly by referral level
         cursor.execute('''
-            SELECT 
-                rn.level, 
-                COUNT(DISTINCT rn.referred_id) as headcount,
-                COALESCE(SUM(p.amount), 0) as total_invested
+            SELECT level, COUNT(id) 
+            FROM referral_network 
+            WHERE referrer_id = %s 
+            GROUP BY level
+        ''', (user_id,))
+        count_rows = cursor.fetchall()
+        
+        # 2. Fetch investment sums grouped cleanly by referral level
+        cursor.execute('''
+            SELECT rn.level, COALESCE(SUM(p.amount), 0)
             FROM referral_network rn
             LEFT JOIN user_plan p ON rn.referred_id = p.user_id
             WHERE rn.referrer_id = %s
             GROUP BY rn.level
         ''', (user_id,))
-        rows = cursor.fetchall()
+        plan_rows = cursor.fetchall()
         
         cursor.close()
         conn.close()
 
-        # Initialize base counters
-        data = {
-            1: {"count": 0, "plan": 0.00},
-            2: {"count": 0, "plan": 0.00},
-            3: {"count": 0, "plan": 0.00}
-        }
+        # Initialize safe baseline data storage dictionaries
+        counts = {1: 0, 2: 0, 3: 0}
+        plans = {1: 0.00, 2: 0.00, 3: 0.00}
 
-        # Dynamically map the clean row data using positional indexes
-        for row in rows:
-            lvl = int(row[0])
-            count = int(row[1])
-            plan_amt = float(row[2])
-            
-            if lvl in data:
-                data[lvl]["count"] = count
-                data[lvl]["plan"] = plan_amt
+        # Safely extract rows handling both dictionary cursors and positional tuples
+        for row in count_rows:
+            lvl = int(row['level'] if isinstance(row, dict) else row[0])
+            val = int(row['count'] if isinstance(row, dict) else row[1])
+            if lvl in counts:
+                counts[lvl] = val
 
-        # Calculate overarching network sums
-        total_members = data[1]["count"] + data[2]["count"] + data[3]["count"]
-        total_team_plan = data[1]["plan"] + data[2]["plan"] + data[3]["plan"]
+        for row in plan_rows:
+            lvl = int(row['level'] if isinstance(row, dict) else row[0])
+            val = float(row['level_plan'] if isinstance(row, dict) else row[1])
+            if lvl in plans:
+                plans[lvl] = val
 
+        # Calculate combined network metrics
+        total_members = counts[1] + counts[2] + counts[3]
+        total_team_plan = plans[1] + plans[2] + plans[3]
+
+        # 3. Return the clean, complete JSON payload to the front-end browser template
         return jsonify({
             "total_members": total_members,
             "total_plan": round(total_team_plan, 2),
-            "lvl1_count": data[1]["count"],
-            "lvl1_plan": round(data[1]["plan"], 2),
-            "lvl2_count": data[2]["count"],
-            "lvl2_plan": round(data[2]["plan"], 2), # TYPO FIXED HERE
-            "lvl3_count": data[3]["count"],
-            "lvl3_plan": round(data[3]["plan"], 2)
+            "lvl1_count": counts[1],
+            "lvl1_plan": round(plans[1], 2),
+            "lvl2_count": counts[2],
+            "lvl2_plan": round(plans[2], 2),
+            "lvl3_count": counts[3],
+            "lvl3_plan": round(plans[3], 2)
         }), 200
 
     except Exception as e:
-        print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
-        # Always return fallback zeros so the frontend code doesn't freeze or break
+        print(f"DATABASE TRANSMISSION ERROR: {e}")
+        # Secure safety fallback so the dashboard doesn't freeze or lock up on the user side
         return jsonify({
             "total_members": 0,
             "total_plan": 0.00,
@@ -341,6 +357,7 @@ def get_team_dashboard_data():
             "lvl3_count": 0,
             "lvl3_plan": 0.00
         }), 200
+
 
 
 
