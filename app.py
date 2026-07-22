@@ -96,7 +96,8 @@ def init_db():
     cursor.close()
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
-from werkzeug.security import generate_password_hash
+# Change your top imports line to match this:
+from werkzeug.security import generate_password_hash, check_password_hash
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
