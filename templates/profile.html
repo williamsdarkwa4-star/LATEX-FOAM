@@ -183,13 +183,12 @@
                 .then(data => {
                     if (!data.error) {
                         // MAP PHONE NUMBER TO ACCOUNT NUMBER DISPLAY
-                        // Uses phone_number from API. Falls back to original property if missing.
                         document.getElementById('accountNoDisplay').innerText = data.phone_number || data.account_number;
                         
-                        // DISPLAY ACTUAL ACCOUNT BALANCE AMOUNT
-                        // Uses actual_balance or balance from API.
-                        let actualBalance = data.actual_balance !== undefined ? data.actual_balance : data.balance;
-                        document.getElementById('balanceDisplay').innerText = "$" + actualBalance.toFixed(2);
+                        // DISPLAY CURRENT BALANCE AMOUNT
+                        // Updated to check for current_balance first, falling back to balance.
+                        let currentBalance = data.current_balance !== undefined ? data.current_balance : data.balance;
+                        document.getElementById('balanceDisplay').innerText = "GHS" + currentBalance.toFixed(2);
                     } else {
                         fallbackUI();
                     }
