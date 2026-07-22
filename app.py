@@ -98,9 +98,10 @@ def init_db():
     print("All PostgreSQL tracking schemas initialised successfully.")
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from werkzeug.security import generate_password_hash, check_password_hash
-
-# 1. MATCHING YOUR ORIGINAL REGISTRATION FORM SUBMISSION PATH
+# ==========================================
+# UNIVERSAL REGISTRATION ENDPOINT HANDLER
+# ==========================================
+@app.route('/register', methods=['POST'])
 @app.route('/process_registration', methods=['POST'])
 def process_registration():
     phone = request.form.get('phone', '').strip()
@@ -113,34 +114,28 @@ def process_registration():
 
     try:
         cursor = connection.cursor()
-        
-        # Check if phone number already exists
         cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
         existing_user = cursor.fetchone()
         
         if existing_user:
             return render_template('register.html', error="This phone number is already registered!")
 
-        # Hash passwords securely before database entry
         hashed_login = generate_password_hash(login_pass)
         hashed_withdraw = generate_password_hash(withdraw_pass) if withdraw_pass else None
 
-        # Insert fresh user record into database
         cursor.execute(
             "INSERT INTO users (phone, password, withdrawal_password, referral_code, balance) VALUES (%s, %s, %s, %s, 0.00)",
             (phone, hashed_login, hashed_withdraw, ref_code)
         )
         connection.commit()
 
-        # Log user into active session memory instantly
         cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
         new_user = cursor.fetchone()
         
-        # Safely extract user ID whether database returns dict or tuple
         if isinstance(new_user, dict):
             session['user_id'] = new_user['id']
         else:
-            session['user_id'] = new_user[0]
+            session['user_id'] = new_user
             
         session['user_phone'] = phone
         return redirect('/dashboard')
@@ -150,7 +145,10 @@ def process_registration():
         return render_template('register.html', error="Registration failed. Please try again.")
 
 
-# 2. MATCHING YOUR ORIGINAL LOGIN FORM SUBMISSION PATH
+# ==========================================
+# UNIVERSAL LOGIN ENDPOINT HANDLER
+# ==========================================
+@app.route('/login', methods=['POST'])
 @app.route('/process_login', methods=['POST'])
 def process_login():
     phone = request.form.get('phone', '').strip()
@@ -162,13 +160,12 @@ def process_login():
         user_record = cursor.fetchone()
 
         if user_record:
-            # Safely extract details whether database returns dict or tuple
             if isinstance(user_record, dict):
                 db_id = user_record['id']
                 db_password = user_record['password']
             else:
-                db_id = user_record[0]
-                db_password = user_record[1]
+                db_id = user_record
+                db_password = user_record
 
             if check_password_hash(db_password, login_pass):
                 session['user_id'] = db_id
