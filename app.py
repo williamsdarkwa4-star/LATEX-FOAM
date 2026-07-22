@@ -42,7 +42,7 @@ def get_db_connection():
 # Call the function right away when app launches
 init_db()
       
-    import psycopg2
+    #import psycopg2
     from psycopg2.extras import DictCursor
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
