@@ -3,7 +3,10 @@ import sqlite3
 import os
 import psycopg2
 from datetime import datetime
-
+DB_HOST = os.environ.get("DB_HOST")
+DB_NAME = os.environ.get("DB_NAME")
+DB_USER = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
 app = Flask(__name__)
 app.secret_key = 'latex_foam_secure_key_2026'
 
