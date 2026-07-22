@@ -1226,5 +1226,39 @@ def init_db():
             print("All PostgreSQL tracking schemas initialised successfully.")
     except Exception as e:
         print(f"Error initializing database table: {e}")
+init_db()
+# ... your old code ends here ...
+
+def init_db():
+    conn = get_db_connection()
+    if conn is None:
+        print("Database connection failed during startup initialization.")
+        return
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_plan (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                amount NUMERIC(10, 2) DEFAULT 0.00,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_investments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                amount NUMERIC(10, 2) DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("DATABASE PIPELINES STANDARDIZED SUCCESSFULLY.")
+    except Exception as e:
+        print(f"DATABASE AUTO-INIT ERROR: {e}")
 
 init_db()
+
