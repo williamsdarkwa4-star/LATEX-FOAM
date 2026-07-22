@@ -96,14 +96,15 @@ def init_db():
     cursor.close()
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
+from werkzeug.security import generate_password_hash
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        phone = request.form.get('phone')
-        password = request.form.get('password')
-        withdraw_password = request.form.get('withdraw_password')
-        invite_code = request.form.get('invite_code')  # Captures code submitted by user form
+        phone = request.form.get('phone', '').strip()
+        password = request.form.get('password', '').strip()
+        withdraw_password = request.form.get('withdraw_password', '').strip()
+        invite_code = request.form.get('invite_code', '').strip()
         
         if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
@@ -117,44 +118,61 @@ def register():
         try:
             cursor = conn.cursor()
             
-            # 1. Execute insertion statement using PostgreSQL safe string placeholders
+            # FIX 1: Explicitly verify if phone number already exists to prevent duplicate failures
+            cursor.execute('SELECT id FROM users WHERE phone = %s', (phone,))
+            existing_user = cursor.fetchone()
+            if existing_user:
+                cursor.close()
+                conn.close()
+                flash('This phone number is already registered!', 'error')
+                return redirect(url_for('register'))
+            
+            # FIX 2: Securely hash raw plain-text passwords before saving them to the database
+            hashed_login_pass = generate_password_hash(password)
+            hashed_withdraw_pass = generate_password_hash(withdraw_password)
+            
+            # 1. Execute insertion statement with generated password hashes
             cursor.execute(
                 'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
-                (phone, password, withdraw_password, invite_code)
+                (phone, hashed_login_pass, hashed_withdraw_pass, invite_code)
             )
-            new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
+            inserted_row = cursor.fetchone()
             
-            # 2. Level System Hook: Check if user registered via another member's invite link
+            # Safe extraction handling dictionary cursors or standard list tuples
+            new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
+            
+            # 2. Level Referral System Network Hook Mapping
             if invite_code:
-                # Find the user record belonging to that invite code to get their internal user ID
                 cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
-                    direct_referrer_id = referrer_record[0]
+                    direct_referrer_id = referrer_record['id'] if isinstance(referrer_record, dict) else referrer_record[0]
                     
-                    # Track Level 1 connection directly into the database hierarchy
+                    # Track Level 1 connection directly
                     cursor.execute(
                         'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
                         (direct_referrer_id, new_user_id)
                     )
                     
-                    # Track Level 2 connection (Find out who invited the referrer)
+                    # Track Level 2 connection (Find who invited the referrer)
                     cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (direct_referrer_id,))
                     level_2_record = cursor.fetchone()
                     if level_2_record:
+                        lvl2_parent_id = level_2_record['referrer_id'] if isinstance(level_2_record, dict) else level_2_record[0]
                         cursor.execute(
                             'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
-                            (level_2_record[0], new_user_id)
+                            (lvl2_parent_id, new_user_id)
                         )
                         
-                        # Track Level 3 connection (Find out who invited the Level 2 master user)
-                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (level_2_record[0],))
+                        # Track Level 3 connection (Find who invited the Level 2 master user)
+                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl2_parent_id,))
                         level_3_record = cursor.fetchone()
                         if level_3_record:
+                            lvl3_parent_id = level_3_record['referrer_id'] if isinstance(level_3_record, dict) else level_3_record[0]
                             cursor.execute(
                                 'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
-                                (level_3_record[0], new_user_id)
+                                (lvl3_parent_id, new_user_id)
                             )
             
             conn.commit()
@@ -166,16 +184,19 @@ def register():
             
         except Exception as e:
             if conn:
-                conn.rollback()  # Rolls back failed transaction modifications safely
+                conn.rollback()
                 cursor.close()
                 conn.close()
             
-            # PRINT the actual error to your Render log console so we can see it
+            # Print the actual error statement down to your live web service console
             print(f"CRITICAL REGISTRATION ERROR: {e}")
-            
-            # Show a generic system error to the user instead of lying about the phone number
             flash(f'Registration system error: {str(e)}', 'error')
             return redirect(url_for('register'))
+            
+    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
+    url_invite_code = request.args.get('ref', '')
+    return render_template('register.html', url_invite_code=url_invite_code)
+
             
     # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
     url_invite_code = request.args.get('ref', '')
