@@ -280,67 +280,57 @@ def get_team_dashboard_data():
     try:
         cursor = conn.cursor()
         
-        # Pull level and active investment purchase sums per downline branch user
+        # COMBINED QUERY: Get headcount and investment totals grouped cleanly by level
         cursor.execute('''
-            SELECT rn.level, COALESCE(SUM(p.amount), 0) as level_plan
+            SELECT 
+                rn.level, 
+                COUNT(DISTINCT rn.referred_id) as headcount,
+                COALESCE(SUM(p.amount), 0) as total_invested
             FROM referral_network rn
             LEFT JOIN user_plan p ON rn.referred_id = p.user_id
             WHERE rn.referrer_id = %s
-            GROUP BY rn.level, rn.referred_id
+            GROUP BY rn.level
         ''', (user_id,))
-        downline_rows = cursor.fetchall()
-        
-        # Pull exact headcount per membership tier
-        cursor.execute('SELECT level, COUNT(id) FROM referral_network WHERE referrer_id = %s GROUP BY level', (user_id,))
-        count_rows = cursor.fetchall()
+        rows = cursor.fetchall()
         
         cursor.close()
         conn.close()
 
-        lvl1_count = 0
-        lvl2_count = 0
-        lvl3_count = 0
-        
-        lvl1_plan = 0.00
-        lvl2_plan = 0.00
-        lvl3_plan = 0.00
+        # Initialize base counters
+        data = {
+            1: {"count": 0, "plan": 0.00},
+            2: {"count": 0, "plan": 0.00},
+            3: {"count": 0, "plan": 0.00}
+        }
 
-        # Read headcount tuples directly via array positional index points
-        for crow in count_rows:
-            level = crow[0]
-            count = crow[1]
-            if level == 1: lvl1_count = count
-            elif level == 2: lvl2_count = count
-            elif level == 3: lvl3_count = count
-
-        # Accumulate plan stakes securely without reading dictionary keys
-        for row in downline_rows:
-            level = row[0]
-            inv_amt = float(row[1] if row[1] is not None else 0.00)
+        # Dynamically map the clean row data using positional indexes
+        for row in rows:
+            lvl = int(row[0])
+            count = int(row[1])
+            plan_amt = float(row[2])
             
-            if level == 1:
-                lvl1_plan += inv_amt
-            elif level == 2:
-                lvl2_plan += inv_amt
-            elif level == 3:
-                lvl3_plan += inv_amt
+            if lvl in data:
+                data[lvl]["count"] = count
+                data[lvl]["plan"] = plan_amt
 
-        total_members = lvl1_count + lvl2_count + lvl3_count
-        total_team_plan = lvl1_plan + lvl2_plan + lvl3_plan
+        # Calculate overarching network sums
+        total_members = data[1]["count"] + data[2]["count"] + data[3]["count"]
+        total_team_plan = data[1]["plan"] + data[2]["plan"] + data[3]["plan"]
 
         return jsonify({
             "total_members": total_members,
             "total_plan": round(total_team_plan, 2),
-            "lvl1_count": lvl1_count,
-            "lvl1_plan": round(lvl1_plan, 2),
-            "lvl2_count": lvl2_count,
-            "lvl2_plan": round(lvl2_plab, 2),
-            "lvl3_count": lvl3_count,
-            "lvl3_plan": round(lvl3_plan, 2)
+            "lvl1_count": data[1]["count"],
+            "lvl1_plan": round(data[1]["plan"], 2),
+            "lvl2_count": data[2]["count"],
+            "lvl2_plan": round(data[2]["plan"], 2), # TYPO FIXED HERE
+            "lvl3_count": data[3]["count"],
+            "lvl3_plan": round(data[3]["plan"], 2)
         }), 200
 
     except Exception as e:
         print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
+        # Always return fallback zeros so the frontend code doesn't freeze or break
         return jsonify({
             "total_members": 0,
             "total_plan": 0.00,
@@ -352,18 +342,6 @@ def get_team_dashboard_data():
             "lvl3_plan": 0.00
         }), 200
 
-    except Exception as e:
-        print(f"INVESTMENT RECAP TEAM API LOG ERROR: {e}")
-        return jsonify({
-            "total_members": 0,
-            "total_plan": 0.00,
-            "lvl1_count": 0,
-            "lvl1_plan": 0.00,
-            "lvl2_count": 0,
-            "lvl2_plan": 0.00,
-            "lvl3_count": 0,
-            "lvl3_plan": 0.00
-        }), 200
 
 
 
