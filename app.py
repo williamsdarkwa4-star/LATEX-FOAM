@@ -148,39 +148,63 @@ def register():
             # Safe extraction handling dictionary cursors or standard list tuples
             new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
             
-            # 2. Level Referral System Network Hook Mapping
-            if invite_code:
+                        # ====================================================================
+            # UNIFIED MULTI-LEVEL REFERRAL & COMMISSION DISTRIBUTION SYSTEM
+            # ====================================================================
+            if invite_code and new_user_id:
+                # Find the direct parent who owns this invite code
                 cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
-                    direct_referrer_id = referrer_record['id'] if isinstance(referrer_record, dict) else referrer_record[0]
+                    # Safe variable extraction for direct parent (Level 1)
+                    lvl1_parent_id = referrer_record.get('id') if isinstance(referrer_record, dict) else referrer_record
                     
-                    # Track Level 1 connection directly
-                    cursor.execute(
-                        'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
-                        (direct_referrer_id, new_user_id)
-                    )
-                    
-                    # Track Level 2 connection (Find who invited the referrer)
-                    cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (direct_referrer_id,))
-                    level_2_record = cursor.fetchone()
-                    if level_2_record:
-                        lvl2_parent_id = level_2_record['referrer_id'] if isinstance(level_2_record, dict) else level_2_record[0]
+                    if lvl1_parent_id:
+                        # ─── LEVEL 1 Payout: 30% of GH₵30.00 = GH₵9.00 ───
                         cursor.execute(
-                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
-                            (lvl2_parent_id, new_user_id)
+                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
+                            (lvl1_parent_id, new_user_id)
+                        )
+                        cursor.execute(
+                            'UPDATE users SET balance = balance + 9.00 WHERE id = %s', 
+                            (lvl1_parent_id,)
                         )
                         
-                        # Track Level 3 connection (Find who invited the Level 2 master user)
-                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl2_parent_id,))
-                        level_3_record = cursor.fetchone()
-                        if level_3_record:
-                            lvl3_parent_id = level_3_record['referrer_id'] if isinstance(level_3_record, dict) else level_3_record[0]
+                        # ─── LEVEL 2 Payout: 2% of GH₵30.00 = GH₵0.60 ───
+                        # Find who invited your Level 1 parent
+                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl1_parent_id,))
+                        level_2_record = cursor.fetchone()
+                        
+                        if level_2_record:
+                            lvl2_parent_id = level_2_record.get('referrer_id') if isinstance(level_2_record, dict) else level_2_record
+                            
                             cursor.execute(
-                                'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
-                                (lvl3_parent_id, new_user_id)
+                                'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
+                                (lvl2_parent_id, new_user_id)
                             )
+                            cursor.execute(
+                                'UPDATE users SET balance = balance + 0.60 WHERE id = %s', 
+                                (lvl2_parent_id,)
+                            )
+                            
+                            # ─── LEVEL 3 Payout: 1% of GH₵30.00 = GH₵0.30 ───
+                            # Find who invited your Level 2 parent
+                            cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl2_parent_id,))
+                            level_3_record = cursor.fetchone()
+                            
+                            if level_3_record:
+                                lvl3_parent_id = level_3_record.get('referrer_id') if isinstance(level_3_record, dict) else level_3_record
+                                
+                                cursor.execute(
+                                    'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
+                                    (lvl3_parent_id, new_user_id)
+                                )
+                                cursor.execute(
+                                    'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
+                                    (lvl3_parent_id,)
+                                )
+
             
             conn.commit()
             cursor.close()
