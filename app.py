@@ -27,7 +27,41 @@ def get_db_connection():
     if not database_url:
         print("Running locally without a database engine. Skipping connection.")
         return None
-        
+  def init_db():
+    conn = get_db_connection()
+    if conn is None:
+        print("Database connection failed during startup initialization.")
+        return
+    try:
+        cursor = conn.cursor()
+        # Automatically configures the exact table layouts your dashboard needs
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_plan (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                amount NUMERIC(10, 2) DEFAULT 0.00,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_investments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                amount NUMERIC(10, 2) DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("DATABASE PIPELINES STANDARDIZED SUCCESSFULLY.")
+    except Exception as e:
+        print(f"DATABASE AUTO-INIT ERROR: {e}")
+
+# Call the function right away when app launches
+init_db()
+      
     import psycopg2
     from psycopg2.extras import DictCursor
     if database_url.startswith("postgres://"):
@@ -101,23 +135,6 @@ def init_db():
     print("All PostgreSQL tracking schemas initialised successfully.")
 # Change your top imports line to match this:
 from werkzeug.security import generate_password_hash, check_password_hash
--- Tracks active financial plan purchases per user account
-CREATE TABLE IF NOT EXISTS user_plan (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    amount NUMERIC(10, 2) DEFAULT 0.00,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tracks transaction logs for the financial ledger display pipeline
-CREATE TABLE IF NOT EXISTS user_investments (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    amount NUMERIC(10, 2) DEFAULT 0.00,
-    status VARCHAR(50) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -348,7 +365,10 @@ def get_team_dashboard_data():
         total_members = counts[1] + counts[2] + counts[3]
         total_team_plan = plans[1] + plans[2] + plans[3]
 
-        # 3. Return the absolute clean payload directly back to your HTML elements
+                # Calculate combined network metrics cleanly using direct arithmetic addition
+        total_members = counts[1] + counts[2] + counts[3]
+        total_team_plan = plans[1] + plans[2] + plans[3]
+
         return jsonify({
             "total_members": total_members,
             "total_plan": round(total_team_plan, 2),
@@ -359,6 +379,7 @@ def get_team_dashboard_data():
             "lvl3_count": counts[3],
             "lvl3_plan": round(plans[3], 2)
         }), 200
+
 
     except Exception as e:
         print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
