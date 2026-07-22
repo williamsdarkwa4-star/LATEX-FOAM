@@ -191,6 +191,10 @@
             border-radius: 10px;
             padding: 12px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 105px;
         }
 
         .level-box.active {
@@ -206,22 +210,31 @@
         }
 
         .lvl-pct-1, .lvl-pct-2, .lvl-pct-3 { 
-            color: #ffb703; 
             font-size: 16px; 
             font-weight: bold; 
         }
+        .lvl-pct-1 { color: #00bcd4; }
+        .lvl-pct-2 { color: #ffb703; }
+        .lvl-pct-3 { color: #fb8500; }
 
         .lvl-count {
-            color: #4a5d78;
+            color: #ffffff;
             font-size: 11px;
+            font-weight: 600;
             margin-top: 4px;
+        }
+
+        .lvl-plan {
+            color: #4a5d78;
+            font-size: 9px;
+            margin-top: 2px;
         }
 
         /* Status Information Text Area */
         .status-message {
             text-align: center;
-            color: #a0aec0;
-            font-size: 14px;
+            color: #4a5d78;
+            font-size: 13px;
             padding: 15px;
             margin-top: 10px;
         }
@@ -266,11 +279,8 @@
     <!-- Top Navigation Header -->
     <div class="header-nav">
         <div class="logo-group">
-            <!-- 1. Golden Star -->
             <div class="star-badge">★</div>
-            <!-- 2. Blue Sphere Orb -->
             <div class="blue-sphere">
-                <!-- 3. Small Blue L inside -->
                 <div class="l-shape">L</div>
             </div>
             <div class="title-text">
@@ -288,7 +298,6 @@
         <div class="card-panel">
             <div class="panel-label">Your Invitation Link</div>
             <div class="link-display-box" id="linkBox">
-                <!-- Flask inserts link here, falls back to message if missing -->
                 {{ invite_link if invite_link else 'Loading link...' }}
             </div>
             <button class="action-btn" onclick="copyReferralLink()">Copy Link</button>
@@ -304,46 +313,39 @@
         <div class="level-grid">
             <!-- Level 1 (Highlighted/Active Tier) -->
             <div class="level-box active">
-                <div class="lvl-title">Level 1</div>
-                <div class="lvl-pct-1">30%</div>
-                <div class="lvl-count"><span id="lvl1Count">0</span> Members</div>
+                <div>
+                    <div class="lvl-title">Level 1</div>
+                    <div class="lvl-pct-1">30%</div>
+                </div>
+                <div>
+                    <div class="lvl-count"><span id="lvl1Count">0</span> Members</div>
+                    <div class="lvl-plan" id="lvl1Plan">GH₵ 0.00</div>
+                </div>
             </div>
             
             <!-- Level 2 -->
             <div class="level-box">
-                <div class="lvl-title">Level 2</div>
-                <div class="lvl-pct-2">2%</div>
-                <div class="lvl-count"><span id="lvl2Count">0</span> Members</div>
+                <div>
+                    <div class="lvl-title">Level 2</div>
+                    <div class="lvl-pct-2">2%</div>
+                </div>
+                <div>
+                    <div class="lvl-count"><span id="lvl2Count">0</span> Members</div>
+                    <div class="lvl-plan" id="lvl2Plan">GH₵ 0.00</div>
+                </div>
             </div>
             
             <!-- Level 3 -->
             <div class="level-box">
-                <div class="lvl-title">Level 3</div>
-                <div class="lvl-pct-3">1%</div>
-                <div class="lvl-count"><span id="lvl3Count">0</span> Members</div>
+                <div>
+                    <div class="lvl-title">Level 3</div>
+                    <div class="lvl-pct-3">1%</div>
+                </div>
+                <div>
+                    <div class="lvl-count"><span id="lvl3Count">0</span> Members</div>
+                    <div class="lvl-plan" id="lvl3Plan">GH₵ 0.00</div>
+                </div>
             </div>
         </div>
 
         <!-- Real-Time Error/Status Notices -->
-        <div class="status-message" id="statusMessage">
-            Unable to load team data
-        </div>
-
-    </div>
-
-    <!-- Footer Mobile Navigation Bar System -->
-    <div class="bottom-nav">
-        <a href="/dashboard" class="nav-item">
-            <div class="nav-icon">🏠</div>
-            <div>Home</div>
-        </a>
-        <a href="/team" class="nav-item active">
-            <div class="nav-icon">👥</div>
-            <div>Team</div>
-        </a>
-        <a href="/plan" class="nav-item">
-            <div class="nav-icon">📦</div>
-            <div>Plan</div>
-        </a>
-        <a href="/profile" class="nav-item">
-            <div class="nav-icon">👤</div>
