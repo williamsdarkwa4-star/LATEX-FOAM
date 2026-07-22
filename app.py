@@ -172,6 +172,8 @@ def register():
                             'UPDATE users SET balance = balance + 9.00 WHERE id = %s', 
                             # NEW CORRECT LINE:
                              (lvl1_parent_id,)
+                        )
+                            
 
                         
                         # ─── LEVEL 2 Payout: 2% of GH₵30.00 = GH₵0.60 ───
