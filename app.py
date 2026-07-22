@@ -251,11 +251,9 @@ def get_team_dashboard_data():
 
 
 
-
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # 1. Handle form submissions (POST)
     if request.method == 'POST':
         phone = request.form.get('phone', '').strip()
         password = request.form.get('password', '').strip()
@@ -271,23 +269,25 @@ def login():
 
         try:
             cursor = conn.cursor()
-            cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s', (phone,))
+            # Uses a dynamic check to find the user row by phone string safely
+            cursor.execute('SELECT * FROM users WHERE phone = %s', (phone,))
             user = cursor.fetchone()
             cursor.close()
             conn.close()
 
             if user:
-                # Handle both tuple or dictionary cursor types safely
+                # CRASH PROTECTION: Read dictionary keys or traditional column positions automatically
                 if isinstance(user, dict):
                     db_id = user.get('id')
                     db_phone = user.get('phone')
                     db_password = user.get('password')
                 else:
+                    # In a typical 'SELECT *' tuple layout, id is index 0, phone is index 1, password is index 2
                     db_id = user[0]
                     db_phone = user[1]
                     db_password = user[2]
 
-                # Check secure hash match
+                # Secure cryptographic verification hash execution check
                 if db_password and check_password_hash(db_password, password):
                     session['user_id'] = db_id
                     session['phone'] = db_phone
@@ -297,11 +297,11 @@ def login():
             return redirect(url_for('login'))
 
         except Exception as e:
-            print(f"DATABASE LOGIN ERROR: {e}")
+            # This logs the specific error right into your terminal panel console
+            print(f"MASTER LOGIN CODE CRASH LOG: {e}")
             flash('An error occurred during login. Please try again.', 'error')
             return redirect(url_for('login'))
 
-    # 2. Handle page views (GET) - THIS FIXES THE CRASH
     return render_template('login.html')
 
 
