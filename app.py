@@ -96,101 +96,90 @@ def init_db():
     cursor.close()
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
-from werkzeug.security import generate_password_hash, check_password_hash
 
-# ==========================================
-@app.route('/process_registration', methods=['POST'])
-def process_registration():
-    phone = request.form.get('phone', '').strip()
-    login_pass = request.form.get('password', '').strip()
-    withdraw_pass = request.form.get('withdrawal_password', '').strip()
-    ref_code = request.form.get('ref_code', '').strip()
-
-    if not phone or not login_pass:
-        return render_template('register.html', error="All fields are required!")
-
-    try:
-        cursor = connection.cursor()
-
-        cursor.execute("SELECT id FROM users WHERE phone=%s", (phone,))
-        if cursor.fetchone():
-            return render_template("register.html", error="Phone number already registered!")
-
-        hashed_login = generate_password_hash(login_pass)
-        hashed_withdraw = generate_password_hash(withdraw_pass) if withdraw_pass else None
-
-        cursor.execute("""
-            INSERT INTO users
-            (phone, password, withdrawal_password, referral_code, balance)
-            VALUES (%s,%s,%s,%s,%s)
-        """, (phone, hashed_login, hashed_withdraw, ref_code, 0.00))
-
-        connection.commit()
-
-        cursor.execute("SELECT id FROM users WHERE phone=%s", (phone,))
-        user = cursor.fetchone()
-
-        if isinstance(user, dict):
-            session["user_id"] = user["id"]
-        else:
-            session["user_id"] = user[0]
-
-        session["user_phone"] = phone
-
-        return redirect(url_for("dashboard"))
-
- @app.route('/login', methods=['POST'])
-@app.route('/process_login', methods=['POST'])
-def process_login():
-    phone = request.form.get("phone", "").strip()
-    password = request.form.get("password", "").strip()
-
-    try:
-        cursor = connection.cursor()
-
-        cursor.execute(
-            "SELECT id, password FROM users WHERE phone=%s",
-            (phone,)
-        )
-
-        user = cursor.fetchone()
-
-        if not user:
-            return render_template("login.html", error="Invalid phone number or password!")
-
-        if isinstance(user, dict):
-            user_id = user["id"]
-            hashed_password = user["password"]
-        else:
-            user_id = user[0]
-            hashed_password = user[1]
-
-        if check_password_hash(hashed_password, password):
-            session["user_id"] = user_id
-            session["user_phone"] = phone
-            return redirect(url_for("dashboard"))
-
-        return render_template("login.html", error="Invalid phone number or password!")
-
-    except Exception as e:
-        print("Login Error:", e)
-        return render_template("login.html", error="Server error during login.")   except Exception as e:
-        print("Registration Error:", e)
-        return render_template("register.html", error="Registration failed.")
-    @app.route("/")
-def home():
-    return redirect(url_for("login_page"))   # Replace login_page with your actual login page route name    
-
-def team_page_view():
-    user_id = session.get('user_id')
-    if not user_id:
-        return "Unauthorized. Please log in first.", 401
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        phone = request.form.get('phone')
+        password = request.form.get('password')
+        withdraw_password = request.form.get('withdraw_password')
+        invite_code = request.form.get('invite_code')  # Captures code submitted by user form
         
-    # Automatically generate the individual's UNIQUE invitation link
-    base_url = "https://latex-foam-site.onrender.com"  # ← Change this to your live Render URL
-    unique_referral_link = f"{base_url}/register?ref={user_id}"
-    
-    return render_template('team_dashboard.html', invite_link=unique_referral_link)
+        if not phone or not password or not withdraw_password:
+            flash('Please fill in all required fields!', 'error')
+            return redirect(url_for('register'))
+            
+        conn = get_db_connection()
+        if conn is None:
+            flash('Database engine offline locally. Test registration on live host.', 'error')
+            return redirect(url_for('register'))
+            
+        try:
+            cursor = conn.cursor()
+            
+            # 1. Execute insertion statement using PostgreSQL safe string placeholders
+            cursor.execute(
+                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
+                (phone, password, withdraw_password, invite_code)
+            )
+            new_user_id = cursor.fetchone()[0]  # Extracts generated primary key index for level mapping
+            
+            # 2. Level System Hook: Check if user registered via another member's invite link
+            if invite_code:
+                # Find the user record belonging to that invite code to get their internal user ID
+                cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
+                referrer_record = cursor.fetchone()
+                
+                if referrer_record:
+                    direct_referrer_id = referrer_record[0]
+                    
+                    # Track Level 1 connection directly into the database hierarchy
+                    cursor.execute(
+                        'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
+                        (direct_referrer_id, new_user_id)
+                    )
+                    
+                    # Track Level 2 connection (Find out who invited the referrer)
+                    cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (direct_referrer_id,))
+                    level_2_record = cursor.fetchone()
+                    if level_2_record:
+                        cursor.execute(
+                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
+                            (level_2_record[0], new_user_id)
+                        )
+                        
+                        # Track Level 3 connection (Find out who invited the Level 2 master user)
+                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (level_2_record[0],))
+                        level_3_record = cursor.fetchone()
+                        if level_3_record:
+                            cursor.execute(
+                                'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
+                                (level_3_record[0], new_user_id)
+                            )
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            flash('Registration successful! Please login.', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()  # Rolls back failed transaction modifications safely
+                cursor.close()
+                conn.close()
+            flash('This phone number is already registered!', 'error')
+            return redirect(url_for('register'))
+            
+    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
+    url_invite_code = request.args.get('ref', '')
+    return render_template('register.html', url_invite_code=url_invite_code)
+
+@app.route('/team')
+def team_page_view():
+    if not session.get('user_id'):
+        return "Unauthorized. Please log in first.", 401
+    return render_template('team_dashboard.html')
 
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
@@ -198,24 +187,11 @@ def get_team_dashboard_data():
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    user_phone = session.get('user_phone', '0204216188') 
-    
-    # Return your dashboard data as JSON here
-    return jsonify({"user_phone": user_phone})
-
     # 1. Fetch logged-in user identifier metadata safely from active sessions
     user_phone = session.get('user_phone', '0204216188') 
 
     # 2. Automatically generate the individual's UNIQUE invitation link using your live URL
     unique_referral_link = f"https://onrender.com{user_id}"
-
-    # Line 185 onwards (Ensure this matches the 4-space indentation above)
-    # If this is inside a try block or another structure, indent it by an additional 4 spaces.
-    cursor.execute(
-        "SELECT * FROM users WHERE id = %s", 
-        (user_id,)
-    )
-
 
     # 3. Pull level downlines directly from the Render database core
     downline = ReferralNetwork.query.filter_by(referrer_id=user_id).all()
@@ -242,6 +218,40 @@ def get_team_dashboard_data():
         "levels": levels_data
     })
 
+
+
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        phone = request.form.get('phone')
+        password = request.form.get('password')
+        
+        conn = get_db_connection()
+        if conn is None:
+            flash('Database engine offline locally.', 'error')
+            return redirect(url_for('login'))
+            
+        cursor = conn.cursor()
+        # Changed placeholders from '?' to '%s' to match PostgreSQL rules
+        cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s AND password = %s', (phone, password))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if user:
+            # Safely assigns values using explicit dictionary keys mapping instead of index values
+            session['user_id'] = user['id']
+            session['phone'] = user['phone']
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid phone number or password!', 'error')
+            return redirect(url_for('login'))
+            
+    return render_template('login.html')
+
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: 
@@ -260,6 +270,7 @@ def dashboard():
     
     current_balance = float(result['balance']) if result else 0.0
     return render_template('dashboard.html', user_phone=session['phone'], user_balance=current_balance)
+
 @app.route('/deposit', methods=['GET', 'POST'])
 def deposit():
     if 'user_id' not in session: 
@@ -306,6 +317,7 @@ def deposit():
         user_balance = float(result['balance']) if result else 0.0
         cursor.close()
         conn.close()
+        
     return render_template('deposit.html', user_balance=user_balance)
 @app.route('/withdraw', methods=['GET', 'POST'])
 def withdraw():
@@ -409,6 +421,7 @@ def withdraw():
         'withdraw.html',
         user_balance=user_balance
     )
+''
 @app.route('/history')
 def history():
     if 'user_id' not in session: 
@@ -532,6 +545,7 @@ def claim_profit(user_plan_id):
     cursor.close()
     conn.close()
     return redirect(url_for('history'))
+
 @app.route('/service')
 def service():
     return render_template('service.html')
@@ -601,6 +615,7 @@ def plan():
     cursor.close()
     conn.close()
     return render_template('plan.html', plans=PLANS_DATA)
+
 @app.route('/my_plan')
 def my_plan():
     return render_template('my_plan.html')
@@ -632,6 +647,7 @@ def profile():
         account_number=user_phone,
         user_balance=user_balance
     )
+
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
@@ -844,56 +860,6 @@ def recharge():
 @app.route('/admin/withdraw')
 def admin_withdraw():
     return render_template('admin_withdraw.html')
-
-
-@app.route('/api/admin/users-list', methods=['GET'])
-def admin_get_all_users():
-    if not session.get('user_id') or not session.get('is_admin'):
-        return jsonify({"error": "Forbidden"}), 403
-
-    cursor = connection.cursor()
-    # 2. Fetch all user records so the admin can monitor balances and accounts
-    cursor.execute("SELECT id, phone, account_number, balance FROM users ORDER BY id DESC")
-    users = cursor.fetchall()
-    
-    user_list = []
-    for u in users:
-        user_list.append({
-            "id": u[0],
-            "phone": u[1],
-            "account_number": u[2] if u[2] else f"ACC-{u[0]:05d}",
-            "balance": float(u[3]) if u[3] else 0.00
-        })
-        
-    return jsonify({"users": user_list})
-
-@app.route('/api/admin/update-user-credentials', methods=['POST'])
-def admin_modify_user_security():
-    if not session.get('user_id') or not session.get('is_admin'):
-        return jsonify({"error": "Forbidden"}), 403
-        
-    data = request.get_json()
-    target_user_id = data.get('user_id')
-    change_type = data.get('type')  # 'login' or 'withdrawal'
-    new_credential = data.get('value')
-    
-    if not target_user_id or not new_credential or len(new_credential) < 6:
-        return jsonify({"error": "Invalid inputs. Minimum 6 characters required."}), 400
-        
-    from werkzeug.security import generate_password_hash
-    hashed_value = generate_password_hash(new_credential)
-    cursor = connection.cursor()
-    
-    # 3. Apply password overrides directly to the targeted user ID
-    if change_type == 'login':
-        cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_value, target_user_id))
-    elif change_type == 'withdrawal':
-        cursor.execute("UPDATE users SET withdrawal_password = %s WHERE id = %s", (hashed_value, target_user_id))
-    else:
-        return jsonify({"error": "Unknown operational flag type"}), 400
-        
-    connection.commit()
-    return jsonify({"success": f"User {target_user_id}'s {change_type} password updated successfully."})
 
 
 @app.route('/details')
