@@ -132,35 +132,6 @@ def register():
             hashed_login_pass = generate_password_hash(password)
             hashed_withdraw_pass = generate_password_hash(withdraw_password)
  
-            # ====================================================================
-# AUTO-SCHEMA INITIALIZER (ENSURE PERFECT 4-SPACE INDENTATION)
-# ====================================================================
-def init_db():
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            
-            # Create the missing referral network table automatically
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS referral_network (
-                    id SERIAL PRIMARY KEY,
-                    referrer_id INTEGER NOT NULL,
-                    referred_id INTEGER NOT NULL,
-                    level INTEGER NOT NULL,
-                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
-                    FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE
-                );
-            ''')
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
-            print("All PostgreSQL tracking schemas initialised successfully.")
-        except Exception as e:
-            print(f"Error initializing database: {e}")
-
 # Run the database verification setup right at application execution startup phase
 init_db()
 
@@ -978,6 +949,35 @@ def recharge():
 @app.route('/admin/withdraw')
 def admin_withdraw():
     return render_template('admin_withdraw.html')
+# ====================================================================
+# AUTO-SCHEMA INITIALIZER (PASTED SAFELY AT THE BOTTOM OF APP.PY)
+# ====================================================================
+def init_db():
+    try:
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            # Create the missing referral network table automatically
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS referral_network (
+                    id SERIAL PRIMARY KEY,
+                    referrer_id INTEGER NOT NULL,
+                    referred_id INTEGER NOT NULL,
+                    level INTEGER NOT NULL,
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+            ''')
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("All PostgreSQL tracking schemas initialised successfully.")
+    except Exception as e:
+        print(f"Error initializing database table: {e}")
+
+# Run the database verification setup right at application startup
+init_db()
 
 
 @app.route('/details')
