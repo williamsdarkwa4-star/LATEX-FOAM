@@ -3,7 +3,10 @@ import sqlite3
 import os
 import psycopg2
 from datetime import datetime
-
+DB_HOST = os.environ.get("DB_HOST")
+DB_NAME = os.environ.get("DB_NAME")
+DB_USER = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
 app = Flask(__name__)
 app.secret_key = 'latex_foam_secure_key_2026'
 
@@ -145,8 +148,8 @@ def register():
             )
             inserted_row = cursor.fetchone()
             user = cursor.fetchone()
-            print("STORED PASSWORD:", db_password)
-            print("PASSWORD CHECK:", check_password_hash(db_password, password))
+            print("STORED PASSWORD:", DB_password)
+            print("PASSWORD CHECK:", check_password_hash(DB_password, password))
             
             # Safe extraction handling dictionary cursors or standard list tuples
             new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
