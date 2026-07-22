@@ -132,7 +132,10 @@ def register():
             hashed_login_pass = generate_password_hash(password)
             hashed_withdraw_pass = generate_password_hash(withdraw_password)
  
-            def init_db():
+            # ====================================================================
+# AUTO-SCHEMA INITIALIZER (ENSURE PERFECT 4-SPACE INDENTATION)
+# ====================================================================
+def init_db():
     conn = get_db_connection()
     if conn:
         try:
@@ -157,6 +160,9 @@ def register():
             print("All PostgreSQL tracking schemas initialised successfully.")
         except Exception as e:
             print(f"Error initializing database: {e}")
+
+# Run the database verification setup right at application execution startup phase
+init_db()
 
 # Run the initialization check right away when app launches
 init_db()
