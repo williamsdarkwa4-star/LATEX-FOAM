@@ -133,10 +133,10 @@ def register():
             hashed_withdraw_pass = generate_password_hash(withdraw_password)
  
 # Run the database verification setup right at application execution startup phase
-init_db()
+#init_db()
 
 # Run the initialization check right away when app launches
-init_db()
+#init_db()
 
           # 1. Execute insertion statement with generated password hashes
             cursor.execute(
