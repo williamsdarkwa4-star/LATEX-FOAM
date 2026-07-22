@@ -300,8 +300,111 @@
             <a href="{{ url_for('profile') }}" class="nav-link">
     <div class="nav-icon">👤</div>
     <div class="nav-text">Mine</div>
-</a>
-    </nav>
+      </a>
+  </div>
 
+         <!-- Logic Controller Scripts -->
+    <script>
+        function copyReferralLink() {
+            const linkBox = document.getElementById("linkBox");
+            const linkText = linkBox.innerText.trim();
+            const copyBtn = document.querySelector(".action-btn");
+            
+            if (linkText === "Loading link..." || linkText === "") {
+                alert("Your invitation link is still loading. Please wait.");
+                return;
+            }
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(linkText)
+                    .then(() => handleCopySuccess(copyBtn))
+                    .catch(err => handleCopyError(linkBox));
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = linkText;
+                textArea.style.position = "fixed"; 
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    handleCopySuccess(copyBtn);
+                } catch (err) {
+                    handleCopyError(linkBox);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function handleCopySuccess(button) {
+            const originalText = button.innerText;
+            button.innerText = "✓ COPIED!";
+            button.style.backgroundColor = "#2a9d8f"; 
+            
+            setTimeout(() => {
+                button.innerText = originalText;
+                button.style.backgroundColor = "#118ab2"; 
+            }, 2000);
+        }
+
+        function handleCopyError(container) {
+            alert("Failed to copy automatically. Please copy the link text directly.");
+            container.style.border = "2px dashed #e63946";
+        }
+
+        // Gather server background stats and investment tracking ledgers
+        window.addEventListener('DOMContentLoaded', () => {
+            // 1. Load team counter metrics
+            fetch('/api/team/dashboard-data')
+                .then(response => {
+                    if (!response.ok) throw new Error('API server unreachable');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById("statusMessage").style.display = "none";
+                    if(data.total_members !== undefined) document.getElementById("totalMembers").innerText = data.total_members;
+                    if(data.lvl1_count !== undefined) document.getElementById("lvl1Count").innerText = data.lvl1_count;
+                    if(data.lvl2_count !== undefined) document.getElementById("lvl2Count").innerText = data.lvl2_count;
+                    if(data.lvl3_count !== undefined) document.getElementById("lvl3Count").innerText = data.lvl3_count;
+                })
+                .catch(error => {
+                    console.log("Status update failed:", error);
+                    document.getElementById("statusMessage").innerText = "Unable to load team data";
+                });
+
+            // 2. Load live downline activity ledger rows
+            fetch('/api/team/investment-ledger')
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('ledgerContainer');
+                    container.innerHTML = '';
+                    
+                    if (!data.ledger || data.ledger.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; color:#4a5d78; font-size:13px; padding:10px;">No investment logs recorded in this network branch yet.</div>';
+                        return;
+                    }
+
+                    data.ledger.forEach(item => {
+                        const entry = document.createElement('div');
+                        entry.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 12px; background-color: #020710; border: 1px solid #0d1e36; border-radius: 8px; margin-bottom: 4px;";
+                        entry.innerHTML = `
+                            <div style="text-align: left; display: flex; flex-direction: column;">
+                                <span style="color: #ffffff; font-size: 14px; font-weight: bold;">User ${item.phone}</span>
+                                <span style="color: #4a5d78; font-size: 11px; margin-top: 2px;">Tier Level ${item.level} • ${item.date}</span>
+                            </div>
+                            <div style="color: #00bcd4; font-size: 15px; font-weight: bold; text-align: right;">
+                                GH₵ ${item.amount.toFixed(2)}
+                            </div>
+                        `;
+                        container.appendChild(entry);
+                    });
+                })
+                .catch(() => {
+                    document.getElementById('ledgerContainer').innerHTML = '<div style="text-align:center; color:#e63946; font-size:13px;">Failed to process live ledger feeds.</div>';
+                });
+        });
+    </script>
 </body>
-</html>
+  </html>
+
+
