@@ -99,9 +99,6 @@ def init_db():
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ==========================================
-# UNIVERSAL REGISTRATION ENDPOINT HANDLER
-# ==========================================
-@app.route('/register', methods=['POST'])
 @app.route('/process_registration', methods=['POST'])
 def process_registration():
     phone = request.form.get('phone', '').strip()
@@ -114,69 +111,75 @@ def process_registration():
 
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
-        existing_user = cursor.fetchone()
-        
-        if existing_user:
-            return render_template('register.html', error="This phone number is already registered!")
+
+        cursor.execute("SELECT id FROM users WHERE phone=%s", (phone,))
+        if cursor.fetchone():
+            return render_template("register.html", error="Phone number already registered!")
 
         hashed_login = generate_password_hash(login_pass)
         hashed_withdraw = generate_password_hash(withdraw_pass) if withdraw_pass else None
 
-        cursor.execute(
-            "INSERT INTO users (phone, password, withdrawal_password, referral_code, balance) VALUES (%s, %s, %s, %s, 0.00)",
-            (phone, hashed_login, hashed_withdraw, ref_code)
-        )
+        cursor.execute("""
+            INSERT INTO users
+            (phone, password, withdrawal_password, referral_code, balance)
+            VALUES (%s,%s,%s,%s,%s)
+        """, (phone, hashed_login, hashed_withdraw, ref_code, 0.00))
+
         connection.commit()
 
-        cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
-        new_user = cursor.fetchone()
-        
-        if isinstance(new_user, dict):
-            session['user_id'] = new_user['id']
+        cursor.execute("SELECT id FROM users WHERE phone=%s", (phone,))
+        user = cursor.fetchone()
+
+        if isinstance(user, dict):
+            session["user_id"] = user["id"]
         else:
-            session['user_id'] = new_user
-            
-        session['user_phone'] = phone
-        return redirect('/dashboard')
+            session["user_id"] = user[0]
 
-    except Exception as e:
-        print(f"Registration Error: {e}")
-        return render_template('register.html', error="Registration failed. Please try again.")
+        session["user_phone"] = phone
 
+        return redirect(url_for("dashboard"))
 
-# ==========================================
-# UNIVERSAL LOGIN ENDPOINT HANDLER
-# ==========================================
-@app.route('/login', methods=['POST'])
+ @app.route('/login', methods=['POST'])
 @app.route('/process_login', methods=['POST'])
 def process_login():
-    phone = request.form.get('phone', '').strip()
-    login_pass = request.form.get('password', '').strip()
+    phone = request.form.get("phone", "").strip()
+    password = request.form.get("password", "").strip()
 
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT id, password FROM users WHERE phone = %s", (phone,))
-        user_record = cursor.fetchone()
 
-        if user_record:
-            if isinstance(user_record, dict):
-                db_id = user_record['id']
-                db_password = user_record['password']
-            else:
-                db_id = user_record
-                db_password = user_record
+        cursor.execute(
+            "SELECT id, password FROM users WHERE phone=%s",
+            (phone,)
+        )
 
-            if check_password_hash(db_password, login_pass):
-                session['user_id'] = db_id
-                session['user_phone'] = phone
-                return redirect('/dashboard')
-        
-        return render_template('login.html', error="Invalid phone number or password!")
+        user = cursor.fetchone()
+
+        if not user:
+            return render_template("login.html", error="Invalid phone number or password!")
+
+        if isinstance(user, dict):
+            user_id = user["id"]
+            hashed_password = user["password"]
+        else:
+            user_id = user[0]
+            hashed_password = user[1]
+
+        if check_password_hash(hashed_password, password):
+            session["user_id"] = user_id
+            session["user_phone"] = phone
+            return redirect(url_for("dashboard"))
+
+        return render_template("login.html", error="Invalid phone number or password!")
 
     except Exception as e:
-        print(f"Login Error: {e}")
-        return render_template('login.html', error="Server error during login.")
+        print("Login Error:", e)
+        return render_template("login.html", error="Server error during login.")   except Exception as e:
+        print("Registration Error:", e)
+        return render_template("register.html", error="Registration failed.")
+    @app.route("/")
+def home():
+    return redirect(url_for("login_page"))   # Replace login_page with your actual login page route name    
 
 def team_page_view():
     user_id = session.get('user_id')
