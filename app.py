@@ -27,31 +27,7 @@ def get_db_connection():
     if not database_url:
         print("Running locally without a database engine. Skipping connection.")
         return None
-  def init_db():
-    conn = get_db_connection()
-    if conn is None:
-        print("Database connection failed during startup initialization.")
-        return
-    try:
-        cursor = conn.cursor()
-        # Automatically configures the exact table layouts your dashboard needs
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_plan (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                amount NUMERIC(10, 2) DEFAULT 0.00,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_investments (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                amount NUMERIC(10, 2) DEFAULT 0.00,
-                status VARCHAR(50) DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        ''')
+
         conn.commit()
         cursor.close()
         conn.close()
