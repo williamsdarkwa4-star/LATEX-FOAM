@@ -244,7 +244,7 @@ def login():
             return redirect(url_for('login'))
             
         cursor = conn.cursor()
-                cursor = conn.cursor()
+        cursor = conn.cursor()
         
         # 1. Query the user by phone number ONLY
         cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s', (phone,))
