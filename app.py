@@ -131,8 +131,37 @@ def register():
             # FIX 2: Securely hash raw plain-text passwords before saving them to the database
             hashed_login_pass = generate_password_hash(password)
             hashed_withdraw_pass = generate_password_hash(withdraw_password)
+ 
+            def init_db():
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
             
-            # 1. Execute insertion statement with generated password hashes
+            # Create the missing referral network table automatically
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS referral_network (
+                    id SERIAL PRIMARY KEY,
+                    referrer_id INTEGER NOT NULL,
+                    referred_id INTEGER NOT NULL,
+                    level INTEGER NOT NULL,
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+            ''')
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("All PostgreSQL tracking schemas initialised successfully.")
+        except Exception as e:
+            print(f"Error initializing database: {e}")
+
+# Run the initialization check right away when app launches
+init_db()
+
+          # 1. Execute insertion statement with generated password hashes
             cursor.execute(
                 'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
                 (phone, hashed_login_pass, hashed_withdraw_pass, invite_code)
