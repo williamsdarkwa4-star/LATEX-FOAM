@@ -140,20 +140,24 @@ def register():
 
 # Run the initialization check right away when app launches
 #init_db()
-
-          # 1. Execute insertion statement with generated password hashes
+            # 1. Execute insertion statement with generated password hashes
             cursor.execute(
                 'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
                 (phone, hashed_login_pass, hashed_withdraw_pass, invite_code)
             )
-            inserted_row = cursor.fetchone()
-            user = cursor.fetchone()
-            print("STORED PASSWORD:", DB_PASSWORD)
-            print("PASSWORD CHECK:", check_password_hash(DB_PASSWORD,password ))
             
+            inserted_row = cursor.fetchone()
+            
+            if not inserted_row:
+                raise Exception("Database failed to return inserted user ID.")
+                
             # Safe extraction handling dictionary cursors or standard list tuples
             new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
             
+            # ====================================================================
+            # FIXED REGISTER COMMISSION ROUTER (STOPS SELF-PAYING BUG)
+            # ====================================================================
+
                                     # ====================================================================
                # ====================================================================
             # FIXED REGISTER COMMISSION ROUTER (STOPS SELF-PAYING BUG)
