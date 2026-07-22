@@ -149,62 +149,68 @@ def register():
             new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
             
                                     # ====================================================================
-            # PSYCOPG2 MULTI-LEVEL REFERRAL SYSTEM (TUPLE EXTRACTOR)
+               # ====================================================================
+            # FIXED REGISTER COMMISSION ROUTER (STOPS SELF-PAYING BUG)
             # ====================================================================
             if invite_code and new_user_id:
-                # 1. Look up direct parent account row
+                # 1. Look up the person who owns this invite code
                 cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
-                    # Extracts raw integer index 0 safely out of the psycopg2 tuple
-                    lvl1_parent_id = referrer_record[0]
+                    # Unpack the direct parent ID safely from the psycopg2 tuple
+                    lvl1_parent_id = int(referrer_record[0]) if isinstance(referrer_record, (tuple, list)) else int(referrer_record)
                     
                     if lvl1_parent_id:
-                        # ─── LEVEL 1 Payout: 30% of GH₵30.00 registration capital = GH₵9.00 ───
+                        # ─── LEVEL 1 Payout: 30% of GH₵30.00 = GH₵9.00 ───
                         cursor.execute(
                             'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
-                            (int(lvl1_parent_id), int(new_user_id))
+                            (lvl1_parent_id, int(new_user_id))
                         )
+                        # FIXED: Updates lvl1_parent_id (Sponsor) balance, NOT new_user_id
                         cursor.execute(
                             'UPDATE users SET balance = balance + 9.00 WHERE id = %s', 
-                            (int(lvl1_parent_id),)
+                            (lvl1_parent_id Sitting safely,)
                         )
                         
-                        # ─── LEVEL 2 Payout: 2% of GH₵30.00 registration capital = GH₵0.60 ───
-                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (int(lvl1_parent_id),))
+                        # ─── LEVEL 2 Payout: 2% of GH₵30.00 = GH₵0.60 ───
+                        # Find who invited the Level 1 parent
+                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl1_parent_id,))
                         level_2_record = cursor.fetchone()
                         
                         if level_2_record:
-                            lvl2_parent_id = level_2_record[0]
+                            lvl2_parent_id = int(level_2_record[0]) if isinstance(level_2_record, (tuple, list)) else int(level_2_record)
                             
                             if lvl2_parent_id:
                                 cursor.execute(
                                     'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
-                                    (int(lvl2_parent_id), int(new_user_id))
+                                    (lvl2_parent_id, int(new_user_id))
                                 )
+                                # FIXED: Updates lvl2_parent_id (Grandparent) balance
                                 cursor.execute(
                                     'UPDATE users SET balance = balance + 0.60 WHERE id = %s', 
-                                    (int(lvl2_parent_id),)
+                                    (lvl2_parent_id,)
                                 )
                                 
-                                # ─── LEVEL 3 Payout: 1% of GH₵30.00 registration capital = GH₵0.30 ───
-                                cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (int(lvl2_parent_id),))
+                                # ─── LEVEL 3 Payout: 1% of GH₵30.00 = GH₵0.30 ───
+                                # Find who invited the Level 2 parent
+                                cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl2_parent_id,))
                                 level_3_record = cursor.fetchone()
                                 
                                 if level_3_record:
-                                    lvl3_parent_id = level_3_record[0]
+                                    lvl3_parent_id = int(level_3_record[0]) if isinstance(level_3_record, (tuple, list)) else int(level_3_record)
                                     
                                     if lvl3_parent_id:
                                         cursor.execute(
                                             'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
-                                            (int(lvl3_parent_id), int(new_user_id))
+                                            (lvl3_parent_id, int(new_user_id))
                                         )
+                                        # FIXED: Updates lvl3_parent_id (Great-Grandparent) balance
                                         cursor.execute(
                                             'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
-                                            (int(lvl3_parent_id),)
+                                            (lvl3_parent_id,)
                                         )
-
+         
 
             
             conn.commit()
@@ -798,6 +804,84 @@ def profile():
         account_number=user_phone,
         user_balance=user_balance
     )
+@app.route('/api/invest/activate-plan', methods=['POST'])
+def activate_investment_plan():
+    buyer_id = session.get('user_id')
+    if not buyer_id:
+        return jsonify({"error": "Please log in first"}), 401
+
+    payload = request.get_json()
+    plan_cost = float(payload.get('amount', 0)) # Example: GH₵ 50.00 or GH₵ 200.00
+
+    if plan_cost <= 0:
+        return jsonify({"error": "Invalid plan selection"}), 400
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+
+        # 1. Verify the buyer has enough money in their account wallet
+        cursor.execute("SELECT balance FROM users WHERE id = %s", (int(buyer_id),))
+        buyer_balance = float(cursor.fetchone()[0])
+
+        if buyer_balance < plan_cost:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Insufficient account balance! Please deposit funds."}), 400
+
+        # 2. Deduct the package cost from the buyer's balance
+        cursor.execute("UPDATE users SET balance = balance - %s WHERE id = %s", (plan_cost, int(buyer_id)))
+
+        # 3. Log this asset purchase into the active user_investments table
+        cursor.execute(
+            "INSERT INTO user_investments (user_id, amount) VALUES (%s, %s) RETURNING id",
+            (int(buyer_id), plan_cost)
+        )
+        conn.commit() # Save investment records immediately
+
+        # 4. COMMISSION ROUTER: Climb the network tree to reward ancestors
+        # Calculate exactly 30% for Level 1, 2% for Level 2, and 1% for Level 3 based on the PLAN COST
+        l1_commission = plan_cost * 0.30
+        l2_commission = plan_cost * 0.02
+        l3_commission = plan_cost * 0.01
+
+        # Look up who invited this buyer (Level 1 Parent)
+        cursor.execute("SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1", (int(buyer_id),))
+        l1_row = cursor.fetchone()
+
+        if l1_row:
+            l1_parent_id = int(l1_row[0])
+            # Credit the owner of the referral code with 30% commission
+            cursor.execute("UPDATE users SET balance = balance + %s WHERE id = %s", (l1_commission, l1_parent_id))
+
+            # Look up who invited the Level 1 parent (Level 2 Grandparent)
+            cursor.execute("SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1", (l1_parent_id,))
+            l2_row = cursor.fetchone()
+            
+            if l2_row:
+                l2_parent_id = int(l2_row[0])
+                # Credit Level 2 ancestor with 2% commission
+                cursor.execute("UPDATE users SET balance = balance + %s WHERE id = %s", (l2_commission, l2_parent_id))
+
+                # Look up who invited the Level 2 parent (Level 3 Great-Grandparent)
+                cursor.execute("SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1", (l2_parent_id,))
+                l3_row = cursor.fetchone()
+                
+                if l3_row:
+                    l3_parent_id = int(l3_row[0])
+                    # Credit Level 3 ancestor with 1% commission
+                    cursor.execute("UPDATE users SET balance = balance + %s WHERE id = %s", (l3_commission, l3_parent_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": "Investment active! Commissions distributed successfully."}), 200
+
+    except Exception as e:
+        print(f"CRITICAL COMMISSION ROUTING SYSTEM CRASH: {e}")
+        return jsonify({"error": "Internal network processing failure"}), 500
+
+
 @app.route('/api/team/investment-ledger', methods=['GET'])
 def get_team_investment_ledger():
     user_id = session.get('user_id')
