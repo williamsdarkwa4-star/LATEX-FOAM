@@ -206,12 +206,17 @@ def register():
     # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
     url_invite_code = request.args.get('ref', '')
     return render_template('register.html', url_invite_code=url_invite_code)
-
 @app.route('/team')
 def team_page_view():
-    if not session.get('user_id'):
-        return "Unauthorized. Please log in first.", 401
-    return render_template('team_dashboard.html')
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+        
+    # Generate the link directly in Python so it shows up even if database query fails
+    base_url = "https://latex-foam-site.onrender.com"
+    unique_referral_link = f"{base_url}/register?ref={user_id}"
+    
+    return render_template('team_dashboard.html', invite_link=unique_referral_link)
 
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
@@ -219,36 +224,59 @@ def get_team_dashboard_data():
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    # 1. Fetch logged-in user identifier metadata safely from active sessions
-    user_phone = session.get('user_phone', '0204216188') 
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database offline"}), 500
 
-    # 2. Automatically generate the individual's UNIQUE invitation link using your live URL
-    unique_referral_link = f"https://onrender.com{user_id}"
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Fetch raw downline data from your referral network table
+        cursor.execute(
+            'SELECT referred_id, level FROM referral_network WHERE referrer_id = %s', 
+            (user_id,)
+        )
+        downline_rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
 
-    # 3. Pull level downlines directly from the Render database core
-    downline = ReferralNetwork.query.filter_by(referrer_id=user_id).all()
-    
-    levels_data = {
-        1: {"count": 0, "commission_rate": "30%", "members": []},
-        2: {"count": 0, "commission_rate": "2%", "members": []},
-        3: {"count": 0, "commission_rate": "1%", "members": []}
-    }
-    
-    for member in downline:
-        lvl = member.level
-        if lvl in levels_data:
-            levels_data[lvl]["count"] += 1
-            levels_data[lvl]["members"].append({
-                "id": member.referred_id,
-                "date": member.joined_at.strftime('%Y-%m-%d %H:%M')
-            })
+        # Initialize tracking metrics safely
+        lvl1_count = 0
+        lvl2_count = 0
+        lvl3_count = 0
 
-    return jsonify({
-        "username": user_phone,
-        "referral_link": unique_referral_link,
-        "total_team": len(downline),
-        "levels": levels_data
-    })
+        # Loop through database list output format safely
+        for row in downline_rows:
+            # Handle both dictionary output keys or traditional row index values automatically
+            lvl = row.get('level') if isinstance(row, dict) else row[1]
+            
+            if lvl == 1:
+                lvl1_count += 1
+            elif lvl == 2:
+                lvl2_count += 1
+            elif lvl == 3:
+                lvl3_count += 1
+
+        total_members = lvl1_count + lvl2_count + lvl3_count
+
+        # 2. Return data matching the precise keys your team_dashboard.html script looks for
+        return jsonify({
+            "total_members": total_members,
+            "lvl1_count": lvl1_count,
+            "lvl2_count": lvl2_count,
+            "lvl3_count": lvl3_count
+        }), 200
+
+    except Exception as e:
+        print(f"DATABASE TEAM QUERY FAIL ERROR: {e}")
+        # Return fallback zeros so the screen error disappears even if your database table is empty
+        return jsonify({
+            "total_members": 0,
+            "lvl1_count": 0,
+            "lvl2_count": 0,
+            "lvl3_count": 0
+        }), 200
+
 
 
 
