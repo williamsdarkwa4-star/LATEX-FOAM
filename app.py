@@ -949,7 +949,24 @@ def recharge():
 @app.route('/admin/withdraw')
 def admin_withdraw():
     return render_template('admin_withdraw.html')
-# ====================================================================
+
+# Run the database verification setup right at application startup
+init_db()
+
+
+@app.route('/details')
+def details():
+    return render_template('details.html')
+@app.route('/admin/logout')
+def admin_logout():
+    session.clear()
+    return redirect(url_for('login'))
+    return redirect(url_for('admin'))
+    
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+    # ====================================================================
 # AUTO-SCHEMA INITIALIZER (PASTED SAFELY AT THE BOTTOM OF APP.PY)
 # ====================================================================
 def init_db():
@@ -976,21 +993,4 @@ def init_db():
     except Exception as e:
         print(f"Error initializing database table: {e}")
 
-# Run the database verification setup right at application startup
-init_db()
-
-
-@app.route('/details')
-def details():
-    return render_template('details.html')
-@app.route('/admin/logout')
-def admin_logout():
-    session.clear()
-    return redirect(url_for('login'))
-    return redirect(url_for('admin'))
-    
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-    
 init_db()
