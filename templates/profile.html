@@ -144,7 +144,7 @@
         <!-- Wallet Fund Balance Card -->
         <div class="info-card">
             <div class="card-label">Current Available Balance</div>
-            <div class="card-value balance-amount" id="balanceDisplay">$0.00</div>
+            <div class="card-value balance-amount" id="balanceDisplay">GHS0.00</div>
         </div>
 
         <!-- Finance Utilities Dashboard Panel Operations Grid -->
@@ -162,8 +162,8 @@
             </button>
         </div>
 
-        <button class="btn-done" onclick="navigateTo('/dashboard')">
-            Done
+        <button class="btn-done" onclick="navigateTo('/login')">
+            logout
         </button>
 
     </div>
@@ -202,7 +202,7 @@
 
         function fallbackUI() {
             document.getElementById('accountNoDisplay').innerText = "Unavailable";
-            document.getElementById('balanceDisplay').innerText = "GHC 0.00";
+            document.getElementById('balanceDisplay').innerText = "GHS0.00";
         }
     </script>
 </body>
