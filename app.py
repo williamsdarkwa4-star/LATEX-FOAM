@@ -170,8 +170,9 @@ def register():
                         # FIXED: Updates lvl1_parent_id (Sponsor) balance, NOT new_user_id
                         cursor.execute(
                             'UPDATE users SET balance = balance + 9.00 WHERE id = %s', 
-                            (lvl1_parent_id Sitting safely,)
-                        )
+                            # NEW CORRECT LINE:
+                             (lvl1_parent_id,)
+
                         
                         # ─── LEVEL 2 Payout: 2% of GH₵30.00 = GH₵0.60 ───
                         # Find who invited the Level 1 parent
