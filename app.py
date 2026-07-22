@@ -148,62 +148,63 @@ def register():
             # Safe extraction handling dictionary cursors or standard list tuples
             new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
             
-                        # ====================================================================
-            # UNIFIED MULTI-LEVEL REFERRAL & COMMISSION DISTRIBUTION SYSTEM
+                                    # ====================================================================
+            # PSYCOPG2 MULTI-LEVEL REFERRAL SYSTEM (TUPLE EXTRACTOR)
             # ====================================================================
             if invite_code and new_user_id:
-                # Find the direct parent who owns this invite code
+                # 1. Look up direct parent account row
                 cursor.execute('SELECT id FROM users WHERE invite_code = %s', (invite_code,))
                 referrer_record = cursor.fetchone()
                 
                 if referrer_record:
-                    # Safe variable extraction for direct parent (Level 1)
-                    lvl1_parent_id = referrer_record.get('id') if isinstance(referrer_record, dict) else referrer_record
+                    # Extracts raw integer index 0 safely out of the psycopg2 tuple
+                    lvl1_parent_id = referrer_record[0]
                     
                     if lvl1_parent_id:
-                        # ─── LEVEL 1 Payout: 30% of GH₵30.00 = GH₵9.00 ───
+                        # ─── LEVEL 1 Payout: 30% of GH₵30.00 registration capital = GH₵9.00 ───
                         cursor.execute(
                             'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
-                            (lvl1_parent_id, new_user_id)
+                            (int(lvl1_parent_id), int(new_user_id))
                         )
                         cursor.execute(
                             'UPDATE users SET balance = balance + 9.00 WHERE id = %s', 
-                            (lvl1_parent_id,)
+                            (int(lvl1_parent_id),)
                         )
                         
-                        # ─── LEVEL 2 Payout: 2% of GH₵30.00 = GH₵0.60 ───
-                        # Find who invited your Level 1 parent
-                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl1_parent_id,))
+                        # ─── LEVEL 2 Payout: 2% of GH₵30.00 registration capital = GH₵0.60 ───
+                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (int(lvl1_parent_id),))
                         level_2_record = cursor.fetchone()
                         
                         if level_2_record:
-                            lvl2_parent_id = level_2_record.get('referrer_id') if isinstance(level_2_record, dict) else level_2_record
+                            lvl2_parent_id = level_2_record[0]
                             
-                            cursor.execute(
-                                'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
-                                (lvl2_parent_id, new_user_id)
-                            )
-                            cursor.execute(
-                                'UPDATE users SET balance = balance + 0.60 WHERE id = %s', 
-                                (lvl2_parent_id,)
-                            )
-                            
-                            # ─── LEVEL 3 Payout: 1% of GH₵30.00 = GH₵0.30 ───
-                            # Find who invited your Level 2 parent
-                            cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl2_parent_id,))
-                            level_3_record = cursor.fetchone()
-                            
-                            if level_3_record:
-                                lvl3_parent_id = level_3_record.get('referrer_id') if isinstance(level_3_record, dict) else level_3_record
+                            if lvl2_parent_id:
+                                cursor.execute(
+                                    'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
+                                    (int(lvl2_parent_id), int(new_user_id))
+                                )
+                                cursor.execute(
+                                    'UPDATE users SET balance = balance + 0.60 WHERE id = %s', 
+                                    (int(lvl2_parent_id),)
+                                )
                                 
-                                cursor.execute(
-                                    'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
-                                    (lvl3_parent_id, new_user_id)
-                                )
-                                cursor.execute(
-                                    'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
-                                    (lvl3_parent_id,)
-                                )
+                                # ─── LEVEL 3 Payout: 1% of GH₵30.00 registration capital = GH₵0.30 ───
+                                cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (int(lvl2_parent_id),))
+                                level_3_record = cursor.fetchone()
+                                
+                                if level_3_record:
+                                    lvl3_parent_id = level_3_record[0]
+                                    
+                                    if lvl3_parent_id:
+                                        cursor.execute(
+                                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
+                                            (int(lvl3_parent_id), int(new_user_id))
+                                        )
+                                        cursor.execute(
+                                            'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
+                                            (int(lvl3_parent_id),)
+                                        )
+
 
             
             conn.commit()
@@ -247,7 +248,6 @@ def team_page_view():
     unique_referral_link = f"{base_url}/register?ref={user_id}"
     
     return render_template('team_dashboard.html', invite_link=unique_referral_link)
-
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
     user_id = session.get('user_id')
@@ -261,52 +261,90 @@ def get_team_dashboard_data():
     try:
         cursor = conn.cursor()
         
-        # 1. Fetch raw downline data from your referral network table
-        cursor.execute(
-            'SELECT referred_id, level FROM referral_network WHERE referrer_id = %s', 
-            (user_id,)
-        )
+        # Pull level and active investment purchase sums per downline branch user
+        cursor.execute('''
+            SELECT rn.level, COALESCE(SUM(p.amount), 0) as level_investment
+            FROM referral_network rn
+            LEFT JOIN user_investments p ON rn.referred_id = p.user_id
+            WHERE rn.referrer_id = %s
+            GROUP BY rn.level, rn.referred_id
+        ''', (user_id,))
         downline_rows = cursor.fetchall()
+        
+        # Pull exact headcount per membership tier
+        cursor.execute('SELECT level, COUNT(id) FROM referral_network WHERE referrer_id = %s GROUP BY level', (user_id,))
+        count_rows = cursor.fetchall()
+        
         cursor.close()
         conn.close()
 
-        # Initialize tracking metrics safely
         lvl1_count = 0
         lvl2_count = 0
         lvl3_count = 0
+        
+        lvl1_investment = 0.00
+        lvl2_investment = 0.00
+        lvl3_investment = 0.00
 
-        # Loop through database list output format safely
+        # Read headcount tuples directly via array positional index points
+        for crow in count_rows:
+            level = crow[0]
+            count = crow[1]
+            if level == 1: lvl1_count = count
+            elif level == 2: lvl2_count = count
+            elif level == 3: lvl3_count = count
+
+        # Accumulate plan stakes securely without reading dictionary keys
         for row in downline_rows:
-            # Handle both dictionary output keys or traditional row index values automatically
-            lvl = row.get('level') if isinstance(row, dict) else row[1]
+            level = row[0]
+            inv_amt = float(row[1] if row[1] is not None else 0.00)
             
-            if lvl == 1:
-                lvl1_count += 1
-            elif lvl == 2:
-                lvl2_count += 1
-            elif lvl == 3:
-                lvl3_count += 1
+            if level == 1:
+                lvl1_investment += inv_amt
+            elif level == 2:
+                lvl2_investment += inv_amt
+            elif level == 3:
+                lvl3_investment += inv_amt
 
         total_members = lvl1_count + lvl2_count + lvl3_count
+        total_team_investment = lvl1_investment + lvl2_investment + lvl3_investment
 
-        # 2. Return data matching the precise keys your team_dashboard.html script looks for
         return jsonify({
             "total_members": total_members,
+            "total_investment": round(total_team_investment, 2),
             "lvl1_count": lvl1_count,
+            "lvl1_investment": round(lvl1_investment, 2),
             "lvl2_count": lvl2_count,
-            "lvl3_count": lvl3_count
+            "lvl2_investment": round(lvl2_investment, 2),
+            "lvl3_count": lvl3_count,
+            "lvl3_investment": round(lvl3_investment, 2)
         }), 200
 
     except Exception as e:
-        print(f"DATABASE TEAM QUERY FAIL ERROR: {e}")
-        # Return fallback zeros so the screen error disappears even if your database table is empty
+        print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
         return jsonify({
             "total_members": 0,
+            "total_investment": 0.00,
             "lvl1_count": 0,
+            "lvl1_investment": 0.00,
             "lvl2_count": 0,
-            "lvl3_count": 0
+            "lvl2_investment": 0.00,
+            "lvl3_count": 0,
+            "lvl3_investment": 0.00
         }), 200
 
+    except Exception as e:
+        print(f"INVESTMENT RECAP TEAM API LOG ERROR: {e}")
+        return jsonify({
+            "total_members": 0,
+            "total_investment": 0.00,
+            "lvl1_count": 0,
+            "lvl1_investment": 0.00,
+            "lvl2_count": 0,
+            "lvl2_investment": 0.00,
+            "lvl3_count": 0,
+            "lvl3_investment": 0.00
+        }), 200
 
 
 
@@ -760,6 +798,49 @@ def profile():
         account_number=user_phone,
         user_balance=user_balance
     )
+@app.route('/api/team/investment-ledger', methods=['GET'])
+def get_team_investment_ledger():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database offline"}), 500
+
+    try:
+        cursor = conn.cursor()
+        # Query traces downlines, pulling their phone digits, plan amount, and tier level positions
+        cursor.execute('''
+            SELECT u.phone, p.amount, rn.level, p.activated_at
+            FROM referral_network rn
+            JOIN user_investments p ON rn.referred_id = p.user_id
+            JOIN users u ON rn.referred_id = u.id
+            WHERE rn.referrer_id = %s
+            ORDER BY p.activated_at DESC
+        ''', (user_id,))
+        ledger_rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        parsed_ledger = []
+        for row in ledger_rows:
+            # Mask phone numbers for structural privacy (e.g., 0204***188)
+            raw_phone = str(row[0])
+            masked_phone = raw_phone[:4] + "***" + raw_phone[-3:] if len(raw_phone) >= 7 else raw_phone
+            
+            parsed_ledger.append({
+                "phone": masked_phone,
+                "amount": float(row[1]),
+                "level": row[2],
+                "date": row[3].strftime('%Y-%m-%d %H:%M') if row[3] else "Recent"
+            })
+
+        return jsonify({"ledger": parsed_ledger}), 200
+
+    except Exception as e:
+        print(f"LEDGER PIPELINE ERROR: {e}")
+        return jsonify({"ledger": []}), 200
 
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
