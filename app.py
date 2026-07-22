@@ -148,8 +148,8 @@ def register():
             )
             inserted_row = cursor.fetchone()
             user = cursor.fetchone()
-            print("STORED PASSWORD:", DB_password)
-            print("PASSWORD CHECK:", check_password_hash(DB_password, password))
+            print("STORED PASSWORD:", DB_PASSWORD)
+            print("PASSWORD CHECK:", check_password_hash(DB_PASSWORD,password ))
             
             # Safe extraction handling dictionary cursors or standard list tuples
             new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
