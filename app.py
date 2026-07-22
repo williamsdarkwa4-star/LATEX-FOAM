@@ -32,7 +32,7 @@ def get_db_connection():
         cursor.close()
         conn.close()
         print("DATABASE PIPELINES STANDARDIZED SUCCESSFULLY.")
-    except Exception as e:
+    #except Exception as e:
         print(f"DATABASE AUTO-INIT ERROR: {e}")
 
 # Call the function right away when app launches
