@@ -275,9 +275,9 @@ def get_team_dashboard_data():
         
         # Pull level and active investment purchase sums per downline branch user
         cursor.execute('''
-            SELECT rn.level, COALESCE(SUM(p.amount), 0) as level_investment
+            SELECT rn.level, COALESCE(SUM(p.amount), 0) as level_plan
             FROM referral_network rn
-            LEFT JOIN user_investments p ON rn.referred_id = p.user_id
+            LEFT JOIN user_plan p ON rn.referred_id = p.user_id
             WHERE rn.referrer_id = %s
             GROUP BY rn.level, rn.referred_id
         ''', (user_id,))
@@ -294,9 +294,9 @@ def get_team_dashboard_data():
         lvl2_count = 0
         lvl3_count = 0
         
-        lvl1_investment = 0.00
-        lvl2_investment = 0.00
-        lvl3_investment = 0.00
+        lvl1_plan = 0.00
+        lvl2_plan = 0.00
+        lvl3_plan = 0.00
 
         # Read headcount tuples directly via array positional index points
         for crow in count_rows:
@@ -312,50 +312,50 @@ def get_team_dashboard_data():
             inv_amt = float(row[1] if row[1] is not None else 0.00)
             
             if level == 1:
-                lvl1_investment += inv_amt
+                lvl1_plan += inv_amt
             elif level == 2:
-                lvl2_investment += inv_amt
+                lvl2_plan += inv_amt
             elif level == 3:
-                lvl3_investment += inv_amt
+                lvl3_plan += inv_amt
 
         total_members = lvl1_count + lvl2_count + lvl3_count
-        total_team_investment = lvl1_investment + lvl2_investment + lvl3_investment
+        total_team_plan = lvl1_plan + lvl2_plan + lvl3_plan
 
         return jsonify({
             "total_members": total_members,
-            "total_investment": round(total_team_investment, 2),
+            "total_plan": round(total_team_plan, 2),
             "lvl1_count": lvl1_count,
-            "lvl1_investment": round(lvl1_investment, 2),
+            "lvl1_plan": round(lvl1_plan, 2),
             "lvl2_count": lvl2_count,
-            "lvl2_investment": round(lvl2_investment, 2),
+            "lvl2_plan": round(lvl2_plab, 2),
             "lvl3_count": lvl3_count,
-            "lvl3_investment": round(lvl3_investment, 2)
+            "lvl3_plan": round(lvl3_plan, 2)
         }), 200
 
     except Exception as e:
         print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
         return jsonify({
             "total_members": 0,
-            "total_investment": 0.00,
+            "total_plan": 0.00,
             "lvl1_count": 0,
-            "lvl1_investment": 0.00,
+            "lvl1_plan": 0.00,
             "lvl2_count": 0,
-            "lvl2_investment": 0.00,
+            "lvl2_plan": 0.00,
             "lvl3_count": 0,
-            "lvl3_investment": 0.00
+            "lvl3_plan": 0.00
         }), 200
 
     except Exception as e:
         print(f"INVESTMENT RECAP TEAM API LOG ERROR: {e}")
         return jsonify({
             "total_members": 0,
-            "total_investment": 0.00,
+            "total_plan": 0.00,
             "lvl1_count": 0,
-            "lvl1_investment": 0.00,
+            "lvl1_plan": 0.00,
             "lvl2_count": 0,
-            "lvl2_investment": 0.00,
+            "lvl2_plan": 0.00,
             "lvl3_count": 0,
-            "lvl3_investment": 0.00
+            "lvl3_plan": 0.00
         }), 200
 
 
