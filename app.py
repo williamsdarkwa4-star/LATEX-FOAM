@@ -161,7 +161,7 @@ def register():
             cursor.close()
             conn.close()
             
-                        flash('Registration successful! Please login.', 'success')
+            flash('Registration successful! Please login.', 'success')
             return redirect(url_for('login'))
             
         except Exception as e:
