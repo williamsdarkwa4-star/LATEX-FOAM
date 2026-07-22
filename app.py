@@ -244,22 +244,31 @@ def login():
             return redirect(url_for('login'))
             
         cursor = conn.cursor()
-        # Changed placeholders from '?' to '%s' to match PostgreSQL rules
-        cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s AND password = %s', (phone, password))
+                cursor = conn.cursor()
+        
+        # 1. Query the user by phone number ONLY
+        cursor.execute('SELECT id, phone, password FROM users WHERE phone = %s', (phone,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
         
+        # 2. Check if a user was found and then compare the hashed password safely
         if user:
-            # Safely assigns values using explicit dictionary keys mapping instead of index values
-            session['user_id'] = user['id']
-            session['phone'] = user['phone']
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid phone number or password!', 'error')
-            return redirect(url_for('login'))
+            # Handle both dictionary cursor and standard tuple cursor formats automatically
+            db_password = user['password'] if isinstance(user, dict) else user[2]
+            db_id = user['id'] if isinstance(user, dict) else user[0]
+            db_phone = user['phone'] if isinstance(user, dict) else user[1]
             
-    return render_template('login.html')
+            # Verify the hashed password against plain text
+            if check_password_hash(db_password, password):
+                session['user_id'] = db_id
+                session['phone'] = db_phone
+                return redirect(url_for('dashboard'))
+            
+        # 3. Fallback if user doesn't exist OR password verification fails
+        flash('Invalid phone number or password!', 'error')
+        return redirect(url_for('login'))
+
 
 
 @app.route('/dashboard')
