@@ -135,7 +135,7 @@
 
     <div class="profile-container">
 
-        <!-- User Account Card (No Changes to Backend Names) -->
+        <!-- User Account Card -->
         <div class="info-card">
             <div class="card-label">User Account Number</div>
             <div class="card-value" id="accountNoDisplay">Loading...</div>
@@ -149,23 +149,19 @@
 
         <!-- Finance Utilities Dashboard Panel Operations Grid -->
         <div class="action-grid">
-            <!-- 1. Withdraw Button -->
             <button class="grid-btn btn-withdraw" onclick="navigateTo('/withdraw')">
                 <span>💸</span> Withdraw
             </button>
 
-            <!-- 2. Deposit Button -->
             <button class="grid-btn btn-deposit" onclick="navigateTo('/deposit')">
                 <span>💳</span> Deposit
             </button>
 
-            <!-- 3. Plan Button -->
             <button class="grid-btn btn-plan" onclick="navigateTo('/plan')">
                 <span>📦</span> View Packages & Plans
             </button>
         </div>
 
-        <!-- 4. Done Button (Returns to Main Menu Home Dashboard) -->
         <button class="btn-done" onclick="navigateTo('/dashboard')">
             Done
         </button>
@@ -174,12 +170,10 @@
 
     <!-- UI Core Logic Controller Integration -->
     <script>
-        // Client route redirection helper engine
         function navigateTo(routePath) {
             window.location.href = routePath;
         }
 
-        // Asynchronously pull credentials on load execution phase
         window.addEventListener('DOMContentLoaded', () => {
             fetch('/api/user/account-details')
                 .then(response => {
@@ -188,9 +182,14 @@
                 })
                 .then(data => {
                     if (!data.error) {
-                        // Dynamically update strings mapping to matching elements
-                        document.getElementById('accountNoDisplay').innerText = data.account_number;
-                        document.getElementById('balanceDisplay').innerText = "$" + data.balance.toFixed(2);
+                        // MAP PHONE NUMBER TO ACCOUNT NUMBER DISPLAY
+                        // Uses phone_number from API. Falls back to original property if missing.
+                        document.getElementById('accountNoDisplay').innerText = data.phone_number || data.account_number;
+                        
+                        // DISPLAY ACTUAL ACCOUNT BALANCE AMOUNT
+                        // Uses actual_balance or balance from API.
+                        let actualBalance = data.actual_balance !== undefined ? data.actual_balance : data.balance;
+                        document.getElementById('balanceDisplay').innerText = "$" + actualBalance.toFixed(2);
                     } else {
                         fallbackUI();
                     }
@@ -203,7 +202,7 @@
 
         function fallbackUI() {
             document.getElementById('accountNoDisplay').innerText = "Unavailable";
-            document.getElementById('balanceDisplay').innerText = "$0.00";
+            document.getElementById('balanceDisplay').innerText = "GHC 0.00";
         }
     </script>
 </body>
