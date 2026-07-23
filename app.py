@@ -169,7 +169,7 @@ if conn is None:
             flash('Database engine offline locally. Test registration on live host.', 'error')
             return redirect(url_for('register'))
             
-try:
+          try:     
             cursor = conn.cursor()
             
             # FIX 1: Explicitly verify if phone number already exists to prevent duplicate failures
