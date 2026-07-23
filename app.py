@@ -1107,99 +1107,192 @@ def admin():
     conn.close()
 @app.route('/admin/deposit/<int:id>/<action>')
 def admin_handle_deposit(id, action):
+
     if not session.get("admin"):
         return redirect(url_for('admin_login'))
 
     conn = get_db_connection()
+
     if conn is None:
         flash("Database connection unavailable.", "error")
         return redirect(url_for('admin'))
 
     cursor = conn.cursor()
-    # Changed placeholder from '?' to '%s' to match PostgreSQL
-    cursor.execute("SELECT user_id, amount FROM deposits WHERE id=%s", (id,))
-    deposit = cursor.fetchone()
 
-    if not deposit:
+    try:
+
+        cursor.execute(
+            "SELECT user_id, amount FROM deposits WHERE id=%s",
+            (id,)
+        )
+
+        deposit = cursor.fetchone()
+
+        if not deposit:
+            flash("Deposit not found!", "error")
+            return redirect(url_for('admin'))
+
+
+        user_id = deposit['user_id']
+        amount = float(deposit['amount'])
+
+
+        # ============================
+        # APPROVE DEPOSIT
+        # ============================
+        if action == "accept":
+
+            # Add money to user balance
+            cursor.execute(
+                "UPDATE users SET balance = balance + %s WHERE id=%s",
+                (amount, user_id)
+            )
+
+
+            # Update deposit status
+            cursor.execute(
+                "UPDATE deposits SET status='Approved' WHERE id=%s",
+                (id,)
+            )
+
+
+            # ============================
+            # LEVEL 1 COMMISSION (30%)
+            # ============================
+            cursor.execute(
+                """
+                SELECT referrer_id
+                FROM referral_network
+                WHERE referred_id=%s
+                AND level=1
+                """,
+                (user_id,)
+            )
+
+            lvl1 = cursor.fetchone()
+
+            if lvl1:
+
+                lvl1_id = lvl1['referrer_id']
+
+                commission = amount * 0.30
+
+                cursor.execute(
+                    """
+                    UPDATE users 
+                    SET balance = balance + %s 
+                    WHERE id=%s
+                    """,
+                    (commission, lvl1_id)
+                )
+
+
+                # ============================
+                # LEVEL 2 COMMISSION (2%)
+                # ============================
+                cursor.execute(
+                    """
+                    SELECT referrer_id
+                    FROM referral_network
+                    WHERE referred_id=%s
+                    AND level=2
+                    """,
+                    (user_id,)
+                )
+
+                lvl2 = cursor.fetchone()
+
+                if lvl2:
+
+                    lvl2_id = lvl2['referrer_id']
+
+                    commission = amount * 0.02
+
+                    cursor.execute(
+                        """
+                        UPDATE users
+                        SET balance = balance + %s
+                        WHERE id=%s
+                        """,
+                        (commission, lvl2_id)
+                    )
+
+
+                # ============================
+                # LEVEL 3 COMMISSION (1%)
+                # ============================
+                cursor.execute(
+                    """
+                    SELECT referrer_id
+                    FROM referral_network
+                    WHERE referred_id=%s
+                    AND level=3
+                    """,
+                    (user_id,)
+                )
+
+                lvl3 = cursor.fetchone()
+
+                if lvl3:
+
+                    lvl3_id = lvl3['referrer_id']
+
+                    commission = amount * 0.01
+
+                    cursor.execute(
+                        """
+                        UPDATE users
+                        SET balance = balance + %s
+                        WHERE id=%s
+                        """,
+                        (commission, lvl3_id)
+                    )
+
+
+            flash(
+                "Deposit approved. User balance and commissions updated.",
+                "success"
+            )
+
+
+        # ============================
+        # REJECT DEPOSIT
+        # ============================
+        elif action == "reject":
+
+            cursor.execute(
+                "UPDATE deposits SET status='Rejected' WHERE id=%s",
+                (id,)
+            )
+
+            flash(
+                "Deposit rejected.",
+                "error"
+            )
+
+
+        conn.commit()
+
+
+    except Exception as e:
+
+        conn.rollback()
+
+        print(
+            f"ADMIN DEPOSIT ERROR: {e}"
+        )
+
+        flash(
+            "Deposit processing failed.",
+            "error"
+        )
+
+
+    finally:
+
         cursor.close()
         conn.close()
-        flash("Deposit not found!", "error")
-        return redirect(url_for('admin'))
 
-    # Access data fields by explicit dictionary key strings via DictCursor mapping
-    user_id = deposit['user_id']
-    amount = float(deposit['amount'])
-
-    if action == "accept":
-        # Changed placeholders from '?' to '%s' to match PostgreSQL
-        cursor.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (amount, user_id))
-        cursor.execute("UPDATE deposits SET status='Approved' WHERE id=%s", (id,))
-        # After deposit is approved
-
-deposit_amount = amount
-
-# Level 1
-cursor.execute(
-    "SELECT referrer_id FROM referral_network WHERE referred_id=%s AND level=1",
-    (user_id,)
-)
-lvl1 = cursor.fetchone()
-
-if lvl1:
-    lvl1_id = lvl1[0]
-
-    commission = deposit_amount * 0.30
-
-    cursor.execute(
-        "UPDATE users SET balance = balance + %s WHERE id=%s",
-        (commission, lvl1_id)
-    )
-
-
-# Level 2
-cursor.execute(
-    "SELECT referrer_id FROM referral_network WHERE referred_id=%s AND level=2",
-    (user_id,)
-)
-lvl2 = cursor.fetchone()
-
-if lvl2:
-    lvl2_id = lvl2[0]
-
-    commission = deposit_amount * 0.02
-
-    cursor.execute(
-        "UPDATE users SET balance = balance + %s WHERE id=%s",
-        (commission, lvl2_id)
-    )
-
-
-# Level 3
-cursor.execute(
-    "SELECT referrer_id FROM referral_network WHERE referred_id=%s AND level=3",
-    (user_id,)
-)
-lvl3 = cursor.fetchone()
-
-if lvl3:
-    lvl3_id = lvl3[0]
-
-    commission = deposit_amount * 0.01
-
-    cursor.execute(
-        "UPDATE users SET balance = balance + %s WHERE id=%s",
-        (commission, lvl3_id)
-    )
-        
-        flash("Deposit approved. User balance updated.", "success")
-
-    elif action == "reject":
-        # Changed placeholder from '?' to '%s' to match PostgreSQL
-        cursor.execute("UPDATE deposits SET status='Rejected' WHERE id=%s", (id,))
-        flash("Deposit rejected.", "error")
-
-    conn.commit()
-    cursor.close()
 
     return redirect(url_for('admin'))
 
