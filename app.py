@@ -71,7 +71,7 @@ def init_db():
             );
         ''')
 
-        # 3. User Investments Table (Resolves ledger relationship errors)
+        # 3. User plans Table (Resolves ledger relationship errors)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_investments (
                 id SERIAL PRIMARY KEY,
