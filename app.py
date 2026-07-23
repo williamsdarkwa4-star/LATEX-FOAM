@@ -151,7 +151,7 @@ cursor.close()
 conn.close()
 
 print("PostgreSQL database tables initialized successfully.")    
- from werkzeug.security import generate_password_hash, check_password_hash
+ 
 @app.route('/register', methods=['GET', 'POST'])
  def register():
     if request.method == 'POST':
