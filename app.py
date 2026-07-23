@@ -96,7 +96,7 @@ init_db()
 
     
     # 2. Deposits Table (Kept as is, records status modifications automatically)
-         cursor.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS deposits (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
