@@ -41,8 +41,7 @@ def get_db_connection():
 
 # Call the function right away when app launches
 init_db()
-      
-    #import psycopg2
+import psycopg2
     from psycopg2.extras import DictCursor
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
@@ -274,10 +273,6 @@ if invite_code and new_user_id:
     # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
     url_invite_code = request.args.get('ref', '')
     return render_template('register.html', url_invite_code=url_invite_code)
-
-    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
-    url_invite_code = request.args.get('ref', '')
-    return render_template('register.html', url_invite_code=url_invite_code)
 @app.route('/team')
 def team_page_view():
     user_id = session.get('user_id')
@@ -288,7 +283,8 @@ def team_page_view():
     base_url = "https://latex-foam-site.onrender.com"
     unique_referral_link = f"{base_url}/register?ref={user_id}"
     
-    return render_template('team_dashboard.html', invite_link=unique_referral_link)
+    return render_template('team_dashboard.html',)
+    
 @app.route('/api/team/dashboard-data', methods=['GET'])
 def get_team_dashboard_data():
     user_id = session.get('user_id')
@@ -299,6 +295,7 @@ def get_team_dashboard_data():
     if conn is None:
         return jsonify({"error": "Database offline"}), 500
 
+    cursor = None
     try:
         cursor = conn.cursor()
         
@@ -320,9 +317,6 @@ def get_team_dashboard_data():
             GROUP BY rn.level
         ''', (user_id,))
         plan_rows = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
 
         # Initialize baseline fallback storage dictionaries
         counts = {1: 0, 2: 0, 3: 0}
@@ -345,10 +339,6 @@ def get_team_dashboard_data():
         total_members = counts[1] + counts[2] + counts[3]
         total_team_plan = plans[1] + plans[2] + plans[3]
 
-                # Calculate combined network metrics cleanly using direct arithmetic addition
-        total_members = counts[1] + counts[2] + counts[3]
-        total_team_plan = plans[1] + plans[2] + plans[3]
-
         return jsonify({
             "total_members": total_members,
             "total_plan": round(total_team_plan, 2),
@@ -360,10 +350,14 @@ def get_team_dashboard_data():
             "lvl3_plan": round(plans[3], 2)
         }), 200
 
-
     except Exception as e:
+        if conn:
+            conn.rollback()
+        
+        # Print the exact log format throwing in your Render logs
         print(f"PSYCOPG2 TEAM ANALYTICS ENGINE ERROR: {e}")
-        # Baseline zeros keep the screen active instead of freezing on errors
+        
+        # OPTION A: Return zeros so frontend doesn't crash (Your current setup)
         return jsonify({
             "total_members": 0,
             "total_plan": 0.00,
@@ -375,20 +369,14 @@ def get_team_dashboard_data():
             "lvl3_plan": 0.00
         }), 200
 
+        # OPTION B: Use this instead if you want front-end monitoring tools to catch it:
+        # return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
 
-    except Exception as e:
-        print(f"DATABASE TRANSMISSION ERROR: {e}")
-        # Secure safety fallback so the dashboard doesn't freeze or lock up on the user side
-        return jsonify({
-            "total_members": 0,
-            "total_plan": 0.00,
-            "lvl1_count": 0,
-            "lvl1_plan": 0.00,
-            "lvl2_count": 0,
-            "lvl2_plan": 0.00,
-            "lvl3_count": 0,
-            "lvl3_plan": 0.00
-        }), 200
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 
@@ -1168,9 +1156,12 @@ def admin_withdraw():
 init_db()
 
 
-@app.route('/details')
-def details():
-    return render_template('details.html')
+@app.route('/api/user/account-details', methods=['GET'])
+def account_details():
+    # Fetch your user details from the database here
+    # return jsonify({"status": "success", "data": {...}})
+    pass
+
 @app.route('/admin/logout')
 def admin_logout():
     session.clear()
@@ -1180,7 +1171,53 @@ def admin_logout():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-    # ====================================================================
+    
+def init_db():
+    """Ensures all required tables exist in PostgreSQL before handling traffic."""
+    # Replace with your actual connection configuration or environment variable
+    import psycopg2
+    import os
+    
+    db_url = os.environ.get('DATABASE_URL', 'your_connection_string_here')
+    conn = psycopg2.connect(db_url)
+    cursor = conn.cursor()
+    
+    try:
+        # Create user_plan table if missing
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_plan (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL,
+                plan_name VARCHAR(100) NOT NULL,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # Create user_investments table if missing
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_investments (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL,
+                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        conn.commit()
+        print("DATABASE INIT: Tables verified and created successfully.")
+    except Exception as e:
+        conn.rollback()
+        print(f"DATABASE INIT ERROR: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# Call this right under your if __name__ == '__main__': block
+# init_db()
+
+#================================================================
 # AUTO-SCHEMA INITIALIZER (PASTED SAFELY AT THE BOTTOM OF APP.PY)
 # ====================================================================
 def init_db():
@@ -1209,36 +1246,186 @@ def init_db():
 init_db()
 # ... your old code ends here ...
 
-def init_db():
-    conn = get_db_connection()
-    if conn is None:
-        print("Database connection failed during startup initialization.")
+def init_all_tables():
+    """Executes schema generation to resolve relation does not exist errors."""
+    import psycopg2
+    import os
+
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        print("DATABASE INIT ERROR: DATABASE_URL environment variable is missing!")
         return
+
+    conn = None
+    cursor = None
     try:
+        conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
-        cursor.execute('''
+        
+        # 1. Resolve 'relation user_plan does not exist'
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_plan (
                 id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                amount NUMERIC(10, 2) DEFAULT 0.00,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_investments (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                amount NUMERIC(10, 2) DEFAULT 0.00,
+                user_id INT NOT NULL,
+                plan_name VARCHAR(100) NOT NULL DEFAULT 'Basic',
+                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
                 status VARCHAR(50) DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        ''')
+        """)
+        from flask import request, session, jsonify
+
+@app.route('/api/plan/purchase', methods=['POST'])
+def purchase_plan():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    data = request.get_json() or {}
+    plan_name = data.get('plan_name', '').strip()
+    
+    try:
+        amount = float(data.get('amount', 0))
+        if amount <= 0 or not plan_name:
+            return jsonify({"error": "Invalid plan name or purchase amount."}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Amount must be a valid decimal number."}), 400
+
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database service offline"}), 500
+
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        
+        # Check if the user already has an assigned plan record
+        cursor.execute('SELECT id FROM user_plan WHERE user_id = %s;', (user_id,))
+        existing_plan = cursor.fetchone()
+        
+        if existing_plan:
+            # Update their active plan parameters cleanly
+            cursor.execute('''
+                UPDATE user_plan 
+                SET plan_name = %s, amount = %s, status = 'active', created_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s
+                RETURNING id;
+            ''', (plan_name, amount, user_id))
+        else:
+            # Create a brand new plan assignment row
+            cursor.execute('''
+                INSERT INTO user_plan (user_id, plan_name, amount, status)
+                VALUES (%s, %s, %s, 'active')
+                RETURNING id;
+            ''', (user_id, plan_name, amount))
+            
+        record = cursor.fetchone()
         conn.commit()
-        cursor.close()
-        conn.close()
-        print("DATABASE PIPELINES STANDARDIZED SUCCESSFULLY.")
+        
+        rec_id = record['id'] if isinstance(record, dict) else record[0]
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully activated plan: {plan_name}",
+            "plan_id": rec_id
+        }), 200
+
     except Exception as e:
-        print(f"DATABASE AUTO-INIT ERROR: {e}")
+        if conn:
+            conn.rollback()
+        print(f"PLAN ACTIVATION SEVERE ERROR: {str(e)}")
+        return jsonify({"error": "Internal database error processing plan change."}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+@app.route('/api/plan/current', methods=['GET'])
+def get_current_plan():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database offline"}), 500
+
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT plan_name, amount, status, created_at 
+            FROM user_plan 
+            WHERE user_id = %s LIMIT 1;
+        ''', (user_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({
+                "has_plan": False,
+                "plan_name": "No Active Plan",
+                "amount": 0.00,
+                "status": "inactive"
+            }), 200
+
+        if isinstance(row, dict):
+            return jsonify({
+                "has_plan": True,
+                "plan_name": row['plan_name'],
+                "amount": float(row['amount']),
+                "status": row['status'],
+                "activated_at": str(row['created_at'])
+            }), 200
+        else:
+            return jsonify({
+                "has_plan": True,
+                "plan_name": row[0],
+                "amount": float(row[1]),
+                "status": row[2],
+                "activated_at": str(row[3])
+            }), 200
+
+    except Exception as e:
+        print(f"DATABASE FETCH PLAN FAILURE: {str(e)}")
+        return jsonify({"error": "Could not recover active subscription data."}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+  ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS plan_name VARCHAR(100) DEFAULT 'Basic';
+ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS amount NUMERIC(15, 2) DEFAULT 0.00;
+          conn.close()
+
+        # 2. Resolve 'relation user_investments does not exist'
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_investments (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL,
+                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # 3. Add explicit indexes to optimize performance for the ledger joins
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_plan_uid ON user_plan(user_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_inv_uid ON user_investments(user_id);")
+        
+        conn.commit()
+        print("DATABASE INITIALIZATION SUCCESS: Tables and indices verified.")
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"CRITICAL DATABASE INITIALIZATION FAILURE: {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 init_db()
+if __name__ == '__main__':
+    init_all_tables() # Runs every time the web service spins up or redeploys
+    app.run()
 
