@@ -1682,9 +1682,26 @@ def get_current_plan():
         if cursor:
             cursor.close()
         if conn:
-  ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS plan_name VARCHAR(100) DEFAULT 'Basic';
+  
+#import psycopg2
+
+# 1. Establish your connection
+conn = psycopg2.connect("your_connection_string")
+cursor = conn.cursor()
+
+# 2. Define your SQL migration queries
+migration_sql = """
+ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS plan_name VARCHAR(100) DEFAULT 'Basic';
 ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS amount NUMERIC(15, 2) DEFAULT 0.00;
-          conn.close()
+"""
+
+# 3. Execute and commit the changes
+cursor.execute(migration_sql)
+conn.commit()
+
+# 4. Clean up and close connections safely
+cursor.close()
+conn.close()
 
         # 2. Resolve 'relation user_investments does not exist'
         cursor.execute("""
