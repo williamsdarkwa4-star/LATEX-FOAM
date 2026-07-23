@@ -71,7 +71,7 @@ def init_db():
             );
         ''')
 
-        # 3. User plans Table (Resolves ledger relationship errors)
+        # 3. User plan Table (Resolves ledger relationship errors)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_investments (
                 id SERIAL PRIMARY KEY,
@@ -128,7 +128,7 @@ cursor.execute("""
 """)
 
 
-# 4. User Purchased Plans Table
+# 4. User Purchased Plan Table
 # Tracks purchased plans and profit claim dates
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS user_plans (
@@ -164,7 +164,7 @@ if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
             return redirect(url_for('register'))
             
-        conn = get_db_connection()
+conn = get_db_connection()
 if conn is None:
             flash('Database engine offline locally. Test registration on live host.', 'error')
             return redirect(url_for('register'))
