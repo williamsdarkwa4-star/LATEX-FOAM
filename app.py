@@ -169,7 +169,6 @@ def register():
         if conn is None:
             flash('Database unavailable.', 'error')
             return redirect(url_for('register'))
-
         cursor = None
 
 
@@ -1457,11 +1456,10 @@ def init_all_tables():
 
     conn = None
     cursor = None
-    try:
+try:
     conn = psycopg2.connect(db_url)
     cursor = conn.cursor()
-    
-    # 1. Resolve 'relation user_plan does not exist'
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_plan (
             id SERIAL PRIMARY KEY,
@@ -1474,7 +1472,7 @@ def init_all_tables():
     """)
 
 except Exception as e:
-    print(e)      
+    print(e)
         from flask import request, session, jsonify
 
 @app.route('/api/plan/purchase', methods=['POST'])
