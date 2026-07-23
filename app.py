@@ -4,7 +4,7 @@ import sqlite3
 import os
 import psycopg2
 from datetime import datetime
-
+from psycopg2.extras import DictCursor
 # Global Environment Database Properties Configuration
 DB_HOST = os.environ.get("DB_HOST")
 DB_NAME = os.environ.get("DB_NAME")
@@ -41,19 +41,18 @@ def get_db_connection():
 
 # Call the function right away when app launches
 init_db()
-import psycopg2
-from psycopg2.extras import DictCursor
+
 if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
-return psycopg2.connect(database_url, cursor_factory=DictCursor)
+ return psycopg2.connect(database_url, cursor_factory=DictCursor)
 
-def init_db():
+ def init_db():
     """Initialises all user, deposit, withdrawal, and purchasing ledger tables with history tracking."""
     conn = get_db_connection()
-if conn is None:
+ if conn is None:
         return
         
-    cursor = conn.cursor()
+cursor = conn.cursor()
     
     # 1. Users Table
     cursor.execute('''
@@ -113,35 +112,35 @@ if conn is None:
     conn.close()
     print("All PostgreSQL tracking schemas initialised successfully.")
 # Change your top imports line to match this:
-from werkzeug.security import generate_password_hash, check_password_hash
+ from werkzeug.security import generate_password_hash, check_password_hash
 @app.route('/register', methods=['GET', 'POST'])
-def register():
+ def register():
     if request.method == 'POST':
         phone = request.form.get('phone', '').strip()
         password = request.form.get('password', '').strip()
         withdraw_password = request.form.get('withdraw_password', '').strip()
         invite_code = request.form.get('invite_code', '').strip()
         
-        if not phone or not password or not withdraw_password:
+if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
             return redirect(url_for('register'))
             
         conn = get_db_connection()
-        if conn is None:
+if conn is None:
             flash('Database engine offline locally. Test registration on live host.', 'error')
             return redirect(url_for('register'))
             
-        try:
+try:
             cursor = conn.cursor()
             
             # FIX 1: Explicitly verify if phone number already exists to prevent duplicate failures
             cursor.execute('SELECT id FROM users WHERE phone = %s', (phone,))
             existing_user = cursor.fetchone()
-            if existing_user:
+if existing_user:
                 cursor.close()
                 conn.close()
                 flash('This phone number is already registered!', 'error')
-                return redirect(url_for('register'))
+               return redirect(url_for('register'))
             
             # FIX 2: Securely hash raw plain-text passwords before saving them to the database
             hashed_login_pass = generate_password_hash(password)
