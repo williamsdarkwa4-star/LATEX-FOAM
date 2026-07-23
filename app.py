@@ -159,28 +159,29 @@ def register():
         password = request.form.get('password', '').strip()
         withdraw_password = request.form.get('withdraw_password', '').strip()
         invite_code = request.form.get('invite_code', '').strip()
-        
-if not phone or not password or not withdraw_password:
+
+        if not phone or not password or not withdraw_password:
             flash('Please fill in all required fields!', 'error')
             return redirect(url_for('register'))
-            
-conn = get_db_connection()
-if conn is None:
+
+        conn = get_db_connection()
+        if conn is None:
             flash('Database engine offline locally. Test registration on live host.', 'error')
             return redirect(url_for('register'))
-            
-try:     
-   cursor = conn.cursor()
-            
-            # FIX 1: Explicitly verify if phone number already exists to prevent duplicate failures
+
+        try:
+            cursor = conn.cursor()
+
             cursor.execute('SELECT id FROM users WHERE phone = %s', (phone,))
             existing_user = cursor.fetchone()
-                if existing_user:
+
+            if existing_user:
                 cursor.close()
                 conn.close()
                 flash('This phone number is already registered!', 'error')
-               return redirect(url_for('register'))
-            
+                return redirect(url_for('register'))
+
+            # Continue with the rest of your registration code...            
             # FIX 2: Securely hash raw plain-text passwords before saving them to the database
             hashed_login_pass = generate_password_hash(password)
             hashed_withdraw_pass = generate_password_hash(withdraw_password)
