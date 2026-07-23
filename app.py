@@ -153,7 +153,7 @@ conn.close()
 print("PostgreSQL database tables initialized successfully.")    
  
 @app.route('/register', methods=['GET', 'POST'])
- def register():
+def register():
     if request.method == 'POST':
         phone = request.form.get('phone', '').strip()
         password = request.form.get('password', '').strip()
