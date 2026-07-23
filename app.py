@@ -172,6 +172,9 @@ def register():
 
         cursor = None
 
+
+
+        
         try:
             cursor = conn.cursor()
 
@@ -1467,8 +1470,8 @@ def init_all_tables():
                 amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
                 status VARCHAR(50) DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                       );
+                   """)
         from flask import request, session, jsonify
 
 @app.route('/api/plan/purchase', methods=['POST'])
