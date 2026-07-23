@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash,jsonify
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-import sqlite3
 import os
+import sqlite3
 import psycopg2
 from datetime import datetime
 from psycopg2.extras import DictCursor
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+
 # Global Environment Database Properties Configuration
 DB_HOST = os.environ.get("DB_HOST")
 DB_NAME = os.environ.get("DB_NAME")
@@ -25,6 +25,7 @@ PLANS_DATA = {
     '4': {'name': 'Plan four', 'price': 600.0, 'daily': 155.0, 'days': 50},
     '5': {'name': 'Plan five', 'price': 1000.0, 'daily': 450.0, 'days': 50}
 }
+
 def get_db_connection():
     """Establishes connection to Render PostgreSQL when online, handles locally safely."""
     database_url = os.environ.get('DATABASE_URL')
@@ -32,39 +33,67 @@ def get_db_connection():
         print("Running locally without a database engine. Skipping connection.")
         return None
 
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+    return psycopg2.connect(database_url, cursor_factory=DictCursor)
+
+def init_db():
+    """Initialises all user, deposit, withdrawal, and purchasing ledger tables with history tracking."""
+    conn = get_db_connection()
+    if conn is None:
+        return
+        
+    cursor = conn.cursor()
+    try:
+        # 1. Users Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                phone TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                withdraw_password TEXT NOT NULL,
+                invite_code TEXT,
+                balance NUMERIC DEFAULT 30.0
+            );
+        ''')
+        
+        # 2. User Plan Table (Resolves dashboard engine relationship errors)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_plan (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL,
+                plan_name VARCHAR(100) NOT NULL DEFAULT 'Basic',
+                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+
+        # 3. User Investments Table (Resolves ledger relationship errors)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_investments (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL,
+                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        
         conn.commit()
+        print("DATABASE PIPELINES STANDARDIZED SUCCESSFULLY.")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"DATABASE AUTO-INIT ERROR: {e}")
+    finally:
         cursor.close()
         conn.close()
-        print("DATABASE PIPELINES STANDARDIZED SUCCESSFULLY.")
-    #except Exception as e:
-        print(f"DATABASE AUTO-INIT ERROR: {e}")
 
 # Call the function right away when app launches
 init_db()
 
-if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
- return psycopg2.connect(database_url, cursor_factory=DictCursor)
-
- def init_db():
-    """Initialises all user, deposit, withdrawal, and purchasing ledger tables with history tracking."""
-    conn = get_db_connection()
- if conn is None:
-        return
-        
-cursor = conn.cursor()
-    
-    # 1. Users Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            phone TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            withdraw_password TEXT NOT NULL,
-            invite_code TEXT,
-            balance NUMERIC DEFAULT 30.0
-        )
-    ''')
     
     # 2. Deposits Table (Kept as is, records status modifications automatically)
     cursor.execute('''
