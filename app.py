@@ -1458,22 +1458,23 @@ def init_all_tables():
     conn = None
     cursor = None
     try:
-        conn = psycopg2.connect(db_url)
-        cursor = conn.cursor()
-        
-        # 1. Resolve 'relation user_plan does not exist'
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_plan (
-                id SERIAL PRIMARY KEY,
-                user_id INT NOT NULL,
-                plan_name VARCHAR(100) NOT NULL DEFAULT 'Basic',
-                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-                status VARCHAR(50) DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                  );
-            """)
-     except Exception as e:
-         print(e)      
+    conn = psycopg2.connect(db_url)
+    cursor = conn.cursor()
+    
+    # 1. Resolve 'relation user_plan does not exist'
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_plan (
+            id SERIAL PRIMARY KEY,
+            user_id INT NOT NULL,
+            plan_name VARCHAR(100) NOT NULL DEFAULT 'Basic',
+            amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+            status VARCHAR(50) DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+except Exception as e:
+    print(e)      
         from flask import request, session, jsonify
 
 @app.route('/api/plan/purchase', methods=['POST'])
