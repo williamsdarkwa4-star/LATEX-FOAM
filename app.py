@@ -4,6 +4,7 @@ import psycopg2
 from datetime import datetime
 from psycopg2.extras import DictCursor
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Global Environment Database Properties Configuration
 DB_HOST = os.environ.get("DB_HOST")
@@ -95,52 +96,61 @@ def init_db():
 init_db()
 
     
-    # 2. Deposits Table (Kept as is, records status modifications automatically)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS deposits (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            amount NUMERIC NOT NULL,
-            reference TEXT,
-            screenshot_path TEXT,
-            status TEXT DEFAULT 'Pending',
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # 3. Withdrawals Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS withdrawals (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            amount NUMERIC NOT NULL,
-            fee NUMERIC NOT NULL,
-            network TEXT NOT NULL,
-            wallet_number TEXT NOT NULL,
-            status TEXT DEFAULT 'Bank Processing',
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            approved_date TEXT
-        )
-    ''')
-    
-    # 4. User Purchased Plans Table (Added 'last_claimed_date' column)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_plans (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            plan_id TEXT NOT NULL,
-            price NUMERIC NOT NULL,
-            daily_profit NUMERIC NOT NULL,
-            date_purchased TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_claimed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-    print("All PostgreSQL tracking schemas initialised successfully.")
-# Change your top imports line to match this:
+# 2. Deposits Table
+# Stores all user deposit records and payment status
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS deposits (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(10,2) NOT NULL,
+        reference TEXT,
+        screenshot_path TEXT,
+        status TEXT DEFAULT 'Pending',
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+""")
+
+
+# 3. Withdrawals Table
+# Stores user withdrawal requests
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS withdrawals (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(10,2) NOT NULL,
+        fee NUMERIC(10,2) NOT NULL,
+        network TEXT NOT NULL,
+        wallet_number TEXT NOT NULL,
+        status TEXT DEFAULT 'Bank Processing',
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        approved_date TIMESTAMP
+    );
+""")
+
+
+# 4. User Purchased Plans Table
+# Tracks purchased plans and profit claim dates
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_plans (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        plan_id TEXT NOT NULL,
+        price NUMERIC(10,2) NOT NULL,
+        daily_profit NUMERIC(10,2) NOT NULL,
+        date_purchased TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_claimed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+""")
+
+
+# Save database changes
+conn.commit()
+
+# Close database connection
+cursor.close()
+conn.close()
+
+print("PostgreSQL database tables initialized successfully.")    
  from werkzeug.security import generate_password_hash, check_password_hash
 @app.route('/register', methods=['GET', 'POST'])
  def register():
