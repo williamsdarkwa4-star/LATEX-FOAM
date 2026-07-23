@@ -170,10 +170,6 @@ def register():
             flash('Database unavailable.', 'error')
             return redirect(url_for('register'))
         cursor = None
-
-
-
-        
         try:
             cursor = conn.cursor()
 
