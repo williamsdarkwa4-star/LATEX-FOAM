@@ -175,7 +175,7 @@ try:
             # FIX 1: Explicitly verify if phone number already exists to prevent duplicate failures
             cursor.execute('SELECT id FROM users WHERE phone = %s', (phone,))
             existing_user = cursor.fetchone()
-if existing_user:
+                if existing_user:
                 cursor.close()
                 conn.close()
                 flash('This phone number is already registered!', 'error')
@@ -216,7 +216,7 @@ if existing_user:
 invite_code = request.form.get('invite_code', '').strip() 
 
 # Inside your register function's database block, append this downline verification logger:
-if invite_code and new_user_id:
+    if invite_code and new_user_id:
     cursor.execute('SELECT id FROM users WHERE id = %s', (invite_code,))
     referrer = cursor.fetchone()
     if referrer:
