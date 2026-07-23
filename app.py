@@ -238,9 +238,8 @@ invite_code = request.form.get('invite_code', '').strip()
                         )
                         # FIXED: Updates lvl1_parent_id (Sponsor) balance, NOT new_user_id
                         cursor.execute(
-                            'UPDATE users SET balance = balance + 9.00 WHERE id = %s', 
-                            # NEW CORRECT LINE:
-                             (lvl1_parent_id,)
+                              'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, %s)',
+                               (referrer_id, int(new_user_id), 1)
                         )
                             
 
@@ -260,7 +259,7 @@ invite_code = request.form.get('invite_code', '').strip()
                                 )
                                 # FIXED: Updates lvl2_parent_id (Grandparent) balance
                                 cursor.execute(
-                                    'UPDATE users SET balance = balance + 0.60 WHERE id = %s', 
+                                    'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
                                     (lvl2_parent_id,)
                                 )
                                 
@@ -1096,6 +1095,7 @@ def admin():
         pending_deposits=pending_deposits,
         pending_withdrawals=pending_withdrawals
     )
+    conn.close()
 @app.route('/admin/deposit/<int:id>/<action>')
 def admin_handle_deposit(id, action):
     if not session.get("admin"):
@@ -1125,6 +1125,63 @@ def admin_handle_deposit(id, action):
         # Changed placeholders from '?' to '%s' to match PostgreSQL
         cursor.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (amount, user_id))
         cursor.execute("UPDATE deposits SET status='Approved' WHERE id=%s", (id,))
+        # After deposit is approved
+
+deposit_amount = amount
+
+# Level 1
+cursor.execute(
+    "SELECT referrer_id FROM referral_network WHERE referred_id=%s AND level=1",
+    (user_id,)
+)
+lvl1 = cursor.fetchone()
+
+if lvl1:
+    lvl1_id = lvl1[0]
+
+    commission = deposit_amount * 0.30
+
+    cursor.execute(
+        "UPDATE users SET balance = balance + %s WHERE id=%s",
+        (commission, lvl1_id)
+    )
+
+
+# Level 2
+cursor.execute(
+    "SELECT referrer_id FROM referral_network WHERE referred_id=%s AND level=2",
+    (user_id,)
+)
+lvl2 = cursor.fetchone()
+
+if lvl2:
+    lvl2_id = lvl2[0]
+
+    commission = deposit_amount * 0.02
+
+    cursor.execute(
+        "UPDATE users SET balance = balance + %s WHERE id=%s",
+        (commission, lvl2_id)
+    )
+
+
+# Level 3
+cursor.execute(
+    "SELECT referrer_id FROM referral_network WHERE referred_id=%s AND level=3",
+    (user_id,)
+)
+lvl3 = cursor.fetchone()
+
+if lvl3:
+    lvl3_id = lvl3[0]
+
+    commission = deposit_amount * 0.01
+
+    cursor.execute(
+        "UPDATE users SET balance = balance + %s WHERE id=%s",
+        (commission, lvl3_id)
+    )
+        
         flash("Deposit approved. User balance updated.", "success")
 
     elif action == "reject":
@@ -1134,7 +1191,6 @@ def admin_handle_deposit(id, action):
 
     conn.commit()
     cursor.close()
-    conn.close()
 
     return redirect(url_for('admin'))
 
