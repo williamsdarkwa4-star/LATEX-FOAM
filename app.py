@@ -152,6 +152,7 @@ conn.close()
 
 print("PostgreSQL database tables initialized successfully.")    
  
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -166,151 +167,158 @@ def register():
 
         conn = get_db_connection()
         if conn is None:
-            flash('Database engine offline locally. Test registration on live host.', 'error')
+            flash('Database unavailable.', 'error')
             return redirect(url_for('register'))
+
+        cursor = None
 
         try:
             cursor = conn.cursor()
 
-            cursor.execute('SELECT id FROM users WHERE phone = %s', (phone,))
-            existing_user = cursor.fetchone()
-
-            if existing_user:
-                cursor.close()
-                conn.close()
+            # Check if phone already exists
+            cursor.execute(
+                "SELECT id FROM users WHERE phone = %s",
+                (phone,)
+            )
+            if cursor.fetchone():
                 flash('This phone number is already registered!', 'error')
                 return redirect(url_for('register'))
 
-            # Continue with the rest of your registration code...            
-            # FIX 2: Securely hash raw plain-text passwords before saving them to the database
-            hashed_login_pass = generate_password_hash(password)
-            hashed_withdraw_pass = generate_password_hash(withdraw_password)
- 
-# Run the database verification setup right at application execution startup phase
-#init_db()
+            # Hash passwords
+            hashed_password = generate_password_hash(password)
+            hashed_withdraw = generate_password_hash(withdraw_password)
 
-# Run the initialization check right away when app launches
-#init_db()
-            # 1. Execute insertion statement with generated password hashes
-            cursor.execute(
-                'INSERT INTO users (phone, password, withdraw_password, invite_code, balance) VALUES (%s, %s, %s, %s, 30.0) RETURNING id', 
-                (phone, hashed_login_pass, hashed_withdraw_pass, invite_code)
-            )
-            
-            inserted_row = cursor.fetchone()
-            
-            if not inserted_row:
-                raise Exception("Database failed to return inserted user ID.")
-                
-            # Safe extraction handling dictionary cursors or standard list tuples
-            new_user_id = inserted_row['id'] if isinstance(inserted_row, dict) else inserted_row[0]
-            
-            # ====================================================================
-            # FIXED REGISTER COMMISSION ROUTER (STOPS SELF-PAYING BUG)
-            # ====================================================================
+            # Create user
+            cursor.execute("""
+                INSERT INTO users
+                (phone, password, withdraw_password, invite_code, balance)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                phone,
+                hashed_password,
+                hashed_withdraw,
+                invite_code,
+                30.0
+            ))
 
-                                    # ====================================================================
-               # ====================================================================
-            # FIXED REGISTER COMMISSION ROUTER (STOPS SELF-PAYING BUG)
-            # ====================================================================
-            # Extract the hidden field value passed from the link
-invite_code = request.form.get('invite_code', '').strip() 
+            row = cursor.fetchone()
+            new_user_id = row["id"] if isinstance(row, dict) else row[0]
 
-# Inside your register function's database block, append this downline verification logger:
-    if invite_code and new_user_id:
-    cursor.execute('SELECT id FROM users WHERE id = %s', (invite_code,))
-    referrer = cursor.fetchone()
-    if referrer:
-        parent_id = referrer['id'] if isinstance(referrer, dict) else referrer[0]
-        # Log them into your network hierarchy instantly
-        cursor.execute('INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)', (parent_id, new_user_id))
+            # -------------------------
+            # Referral Registration
+            # -------------------------
+            if invite_code:
 
-                referrer_record = cursor.fetchone()
-                
-                if referrer_record:
-                    # Unpack the direct parent ID safely from the psycopg2 tuple
-                    lvl1_parent_id = int(referrer_record[0]) if isinstance(referrer_record, (tuple, list)) else int(referrer_record)
-                    
-                    if lvl1_parent_id:
-                        # ─── LEVEL 1 Payout: 30% of GH₵30.00 = GH₵9.00 ───
-                        cursor.execute(
-                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 1)',
-                            (lvl1_parent_id, int(new_user_id))
-                        )
-                        # FIXED: Updates lvl1_parent_id (Sponsor) balance, NOT new_user_id
-                        cursor.execute(
-                              'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, %s)',
-                               (referrer_id, int(new_user_id), 1)
-                        )
-                            
+                cursor.execute(
+                    "SELECT id FROM users WHERE id = %s",
+                    (invite_code,)
+                )
 
-                        
-                        # ─── LEVEL 2 Payout: 2% of GH₵30.00 = GH₵0.60 ───
-                        # Find who invited the Level 1 parent
-                        cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl1_parent_id,))
-                        level_2_record = cursor.fetchone()
-                        
-                        if level_2_record:
-                            lvl2_parent_id = int(level_2_record[0]) if isinstance(level_2_record, (tuple, list)) else int(level_2_record)
-                            
-                            if lvl2_parent_id:
-                                cursor.execute(
-                                    'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 2)',
-                                    (lvl2_parent_id, int(new_user_id))
-                                )
-                                # FIXED: Updates lvl2_parent_id (Grandparent) balance
-                                cursor.execute(
-                                    'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
-                                    (lvl2_parent_id,)
-                                )
-                                
-                                # ─── LEVEL 3 Payout: 1% of GH₵30.00 = GH₵0.30 ───
-                                # Find who invited the Level 2 parent
-                                cursor.execute('SELECT referrer_id FROM referral_network WHERE referred_id = %s AND level = 1', (lvl2_parent_id,))
-                                level_3_record = cursor.fetchone()
-                                
-                                if level_3_record:
-                                    lvl3_parent_id = int(level_3_record[0]) if isinstance(level_3_record, (tuple, list)) else int(level_3_record)
-                                    
-                                    if lvl3_parent_id:
-                                        cursor.execute(
-                                            'INSERT INTO referral_network (referrer_id, referred_id, level) VALUES (%s, %s, 3)',
-                                            (lvl3_parent_id, int(new_user_id))
-                                        )
-                                        # FIXED: Updates lvl3_parent_id (Great-Grandparent) balance
-                                        cursor.execute(
-                                            'UPDATE users SET balance = balance + 0.30 WHERE id = %s', 
-                                            (lvl3_parent_id,)
-                                        )
-         
+                referrer = cursor.fetchone()
 
-            
+                if referrer:
+
+                    parent_id = (
+                        referrer["id"]
+                        if isinstance(referrer, dict)
+                        else referrer[0]
+                    )
+
+                    # Level 1
+                    cursor.execute("""
+                        INSERT INTO referral_network
+                        (referrer_id, referred_id, level)
+                        VALUES (%s, %s, %s)
+                    """, (
+                        parent_id,
+                        new_user_id,
+                        1
+                    ))
+
+                    # Find Level 2
+                    cursor.execute("""
+                        SELECT referrer_id
+                        FROM referral_network
+                        WHERE referred_id=%s
+                        AND level=1
+                    """, (parent_id,))
+
+                    lvl2 = cursor.fetchone()
+
+                    if lvl2:
+
+                        lvl2_id = lvl2["referrer_id"] if isinstance(lvl2, dict) else lvl2[0]
+
+                        cursor.execute("""
+                            INSERT INTO referral_network
+                            (referrer_id, referred_id, level)
+                            VALUES (%s, %s, %s)
+                        """, (
+                            lvl2_id,
+                            new_user_id,
+                            2
+                        ))
+
+                        # Find Level 3
+                        cursor.execute("""
+                            SELECT referrer_id
+                            FROM referral_network
+                            WHERE referred_id=%s
+                            AND level=1
+                        """, (lvl2_id,))
+
+                        lvl3 = cursor.fetchone()
+
+                        if lvl3:
+
+                            lvl3_id = lvl3["referrer_id"] if isinstance(lvl3, dict) else lvl3[0]
+
+                            cursor.execute("""
+                                INSERT INTO referral_network
+                                (referrer_id, referred_id, level)
+                                VALUES (%s, %s, %s)
+                            """, (
+                                lvl3_id,
+                                new_user_id,
+                                3
+                            ))
+
             conn.commit()
-            cursor.close()
-            conn.close()
-            
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('login'))
-            
+
+            flash(
+                "Registration successful! Please login.",
+                "success"
+            )
+
+            return redirect(url_for("login"))
+
         except Exception as e:
             if conn:
                 conn.rollback()
-                cursor.close()
-                conn.close()
-            
-            # Print the actual error statement down to your live web service console
-            print(f"CRITICAL REGISTRATION ERROR: {e}")
-            flash(f'Registration system error: {str(e)}', 'error')
-            return redirect(url_for('register'))
-            
-    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
-    url_invite_code = request.args.get('ref', '')
-    return render_template('register.html', url_invite_code=url_invite_code)
 
-            
-    # GET Processing Phase: Automatically look for incoming link tags (?ref=XYZ)
+            print(f"REGISTER ERROR: {e}")
+
+            flash(
+                "Registration failed. Please try again.",
+                "error"
+            )
+
+            return redirect(url_for("register"))
+
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
     url_invite_code = request.args.get('ref', '')
-    return render_template('register.html', url_invite_code=url_invite_code)
+    return render_template(
+        'register.html',
+        url_invite_code=url_invite_code
+    )                        
+         
+
 @app.route('/team')
 def team_page_view():
     user_id = session.get('user_id')
