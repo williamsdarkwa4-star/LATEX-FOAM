@@ -43,14 +43,14 @@ def get_db_connection():
 init_db()
 import psycopg2
 from psycopg2.extras import DictCursor
-    if database_url.startswith("postgres://"):
+if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     return psycopg2.connect(database_url, cursor_factory=DictCursor)
 
 def init_db():
     """Initialises all user, deposit, withdrawal, and purchasing ledger tables with history tracking."""
     conn = get_db_connection()
-    if conn is None:
+if conn is None:
         return
         
     cursor = conn.cursor()
