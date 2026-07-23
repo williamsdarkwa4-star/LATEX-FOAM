@@ -170,6 +170,10 @@ def register():
             flash('Database unavailable.', 'error')
             return redirect(url_for('register'))
         cursor = None
+
+
+
+        
         try:
             cursor = conn.cursor()
 
@@ -1093,6 +1097,15 @@ def admin():
     """)
     pending_withdrawals = cursor.fetchall()
 
+    # Get users purchased plans for admin monitoring
+    cursor.execute("""
+        SELECT up.user_id, u.phone, up.plan_id, up.price, up.daily_profit, up.date_purchased
+        FROM user_plans up
+        JOIN users u ON up.user_id = u.id
+        ORDER BY up.date_purchased DESC
+    """)
+    user_plans = cursor.fetchall()
+
     cursor.close()
     conn.close()
 
@@ -1100,7 +1113,8 @@ def admin():
         "admin.html",
         users=users,
         pending_deposits=pending_deposits,
-        pending_withdrawals=pending_withdrawals
+        pending_withdrawals=pending_withdrawals,
+        user_plans=user_plans
     )
     conn.close()
 @app.route('/admin/deposit/<int:id>/<action>')
@@ -1366,262 +1380,3 @@ def admin_logout():
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
     
-def init_db():
-    """Ensures all required tables exist in PostgreSQL before handling traffic."""
-    # Replace with your actual connection configuration or environment variable
-    import psycopg2
-    import os
-    
-    db_url = os.environ.get('DATABASE_URL', 'your_connection_string_here')
-    conn = psycopg2.connect(db_url)
-    cursor = conn.cursor()
-    
-    try:
-        # Create user_plan table if missing
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_plan (
-                id SERIAL PRIMARY KEY,
-                user_id INT NOT NULL,
-                plan_name VARCHAR(100) NOT NULL,
-                status VARCHAR(50) DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        
-        # Create user_investments table if missing
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_investments (
-                id SERIAL PRIMARY KEY,
-                user_id INT NOT NULL,
-                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-                status VARCHAR(50) DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        
-        conn.commit()
-        print("DATABASE INIT: Tables verified and created successfully.")
-    except Exception as e:
-        conn.rollback()
-        print(f"DATABASE INIT ERROR: {e}")
-    finally:
-        cursor.close()
-        conn.close()
-
-# Call this right under your if __name__ == '__main__': block
-# init_db()
-
-#================================================================
-# AUTO-SCHEMA INITIALIZER (PASTED SAFELY AT THE BOTTOM OF APP.PY)
-# ====================================================================
-def init_db():
-    try:
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            # Create the missing referral network table automatically
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS referral_network (
-                    id SERIAL PRIMARY KEY,
-                    referrer_id INTEGER NOT NULL,
-                    referred_id INTEGER NOT NULL,
-                    level INTEGER NOT NULL,
-                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
-                    FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE
-                );
-            ''')
-            conn.commit()
-            cursor.close()
-            conn.close()
-            print("All PostgreSQL tracking schemas initialised successfully.")
-    except Exception as e:
-        print(f"Error initializing database table: {e}")
-init_db()
-# ... your old code ends here ...
-
-def init_all_tables():
-    """Executes schema generation to resolve relation does not exist errors."""
-    import psycopg2
-    import os
-
-    db_url = os.environ.get('DATABASE_URL')
-    if not db_url:
-        print("DATABASE INIT ERROR: DATABASE_URL environment variable is missing!")
-        return
-
-    conn = None
-    cursor = None
-try:
-    conn = psycopg2.connect(db_url)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_plan (
-            id SERIAL PRIMARY KEY,
-            user_id INT NOT NULL,
-            plan_name VARCHAR(100) NOT NULL DEFAULT 'Basic',
-            amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-            status VARCHAR(50) DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-except Exception as e:
-    print(e)
-        #from flask import request, session, jsonify
-
-@app.route('/api/plan/purchase', methods=['POST'])
-def purchase_plan():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-        
-    data = request.get_json() or {}
-    plan_name = data.get('plan_name', '').strip()
-    
-    try:
-        amount = float(data.get('amount', 0))
-        if amount <= 0 or not plan_name:
-            return jsonify({"error": "Invalid plan name or purchase amount."}), 400
-    except (ValueError, TypeError):
-        return jsonify({"error": "Amount must be a valid decimal number."}), 400
-
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database service offline"}), 500
-
-    cursor = None
-    try:
-        cursor = conn.cursor()
-        
-        # Check if the user already has an assigned plan record
-        cursor.execute('SELECT id FROM user_plan WHERE user_id = %s;', (user_id,))
-        existing_plan = cursor.fetchone()
-        
-        if existing_plan:
-            # Update their active plan parameters cleanly
-            cursor.execute('''
-                UPDATE user_plan 
-                SET plan_name = %s, amount = %s, status = 'active', created_at = CURRENT_TIMESTAMP
-                WHERE user_id = %s
-                RETURNING id;
-            ''', (plan_name, amount, user_id))
-        else:
-            # Create a brand new plan assignment row
-            cursor.execute('''
-                INSERT INTO user_plan (user_id, plan_name, amount, status)
-                VALUES (%s, %s, %s, 'active')
-                RETURNING id;
-            ''', (user_id, plan_name, amount))
-            
-        record = cursor.fetchone()
-        conn.commit()
-        
-        rec_id = record['id'] if isinstance(record, dict) else record[0]
-        return jsonify({
-            "status": "success",
-            "message": f"Successfully activated plan: {plan_name}",
-            "plan_id": rec_id
-        }), 200
-
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"PLAN ACTIVATION SEVERE ERROR: {str(e)}")
-        return jsonify({"error": "Internal database error processing plan change."}), 500
-        
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-@app.route('/api/plan/current', methods=['GET'])
-def get_current_plan():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database offline"}), 500
-
-    cursor = None
-    try:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT plan_name, amount, status, created_at 
-            FROM user_plan 
-            WHERE user_id = %s LIMIT 1;
-        ''', (user_id,))
-        row = cursor.fetchone()
-        
-        if not row:
-            return jsonify({
-                "has_plan": False,
-                "plan_name": "No Active Plan",
-                "amount": 0.00,
-                "status": "inactive"
-            }), 200
-
-        if isinstance(row, dict):
-            return jsonify({
-                "has_plan": True,
-                "plan_name": row['plan_name'],
-                "amount": float(row['amount']),
-                "status": row['status'],
-                "activated_at": str(row['created_at'])
-            }), 200
-        else:
-            return jsonify({
-                "has_plan": True,
-                "plan_name": row[0],
-                "amount": float(row[1]),
-                "status": row[2],
-                "activated_at": str(row[3])
-            }), 200
-
-    except Exception as e:
-        print(f"DATABASE FETCH PLAN FAILURE: {str(e)}")
-        return jsonify({"error": "Could not recover active subscription data."}), 500
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-  ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS plan_name VARCHAR(100) DEFAULT 'Basic';
-ALTER TABLE user_plan ADD COLUMN IF NOT EXISTS amount NUMERIC(15, 2) DEFAULT 0.00;
-          conn.close()
-
-        # 2. Resolve 'relation user_investments does not exist'
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_investments (
-                id SERIAL PRIMARY KEY,
-                user_id INT NOT NULL,
-                amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-                status VARCHAR(50) DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        
-        # 3. Add explicit indexes to optimize performance for the ledger joins
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_plan_uid ON user_plan(user_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_inv_uid ON user_investments(user_id);")
-        
-        conn.commit()
-        print("DATABASE INITIALIZATION SUCCESS: Tables and indices verified.")
-        
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"CRITICAL DATABASE INITIALIZATION FAILURE: {str(e)}")
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
-init_db()
-if __name__ == '__main__':
-    init_all_tables() # Runs every time the web service spins up or redeploys
-    app.run()
-
