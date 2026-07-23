@@ -1473,7 +1473,7 @@ try:
 
 except Exception as e:
     print(e)
-        from flask import request, session, jsonify
+        #from flask import request, session, jsonify
 
 @app.route('/api/plan/purchase', methods=['POST'])
 def purchase_plan():
