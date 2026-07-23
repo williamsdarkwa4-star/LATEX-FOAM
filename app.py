@@ -1681,8 +1681,13 @@ def get_current_plan():
     finally:
         if cursor:
             cursor.close()
-        if conn:
-  
+        
+  def get_db_connection():
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
 #import psycopg2
 
 # 1. Establish your connection
